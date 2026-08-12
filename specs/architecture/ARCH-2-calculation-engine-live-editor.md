@@ -659,7 +659,7 @@ _None — all of this task's changes are new files._
 
 ## Task T4: Typed preview client
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** tdd
 > **Effort:** s
 > **Priority:** medium
