@@ -29,4 +29,4 @@ test:
 	cd apps/frontend && npm test
 
 e2e:
-	npx cypress run --config-file e2e/cypress.config.ts --spec e2e/health.cy.ts
+	npx cypress run --config-file e2e/cypress.config.js --spec e2e/health.cy.js

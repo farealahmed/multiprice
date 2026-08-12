@@ -11,7 +11,7 @@ RUN npm ci
 
 COPY . .
 RUN npm run typecheck
-RUN npx tsc
+RUN npx tsc -p tsconfig.build.json
 
 # -----------------------------------------------------------------------------
 # Runtime stage — production dependencies only, non-root user.
