@@ -1,0 +1,208 @@
+/* Ported from design/htmls/styles.css (full-grid spreadsheet, totals block).
+   All colors come from styles/tokens.css variables — none re-derived. */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--white);
+  border: 1px solid var(--ink);
+}
+
+.table th,
+.table td {
+  border: 1px solid var(--line);
+  padding: 10px 14px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table thead th {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+  font-weight: 600;
+  background: var(--cream);
+  border-bottom: 1px solid var(--ink);
+}
+
+.table tbody tr:hover td {
+  background: var(--bg);
+}
+
+.colIndex { width: 36px; }
+.colQty { width: 80px; }
+.colPrice { width: 110px; }
+.colDiscount { width: 190px; }
+.colTax { width: 90px; }
+.colMoney { width: 100px; }
+.colTotal { width: 110px; }
+.colRemove { width: 60px; }
+
+.headNum,
+.numCell,
+.resultCell {
+  text-align: right;
+}
+
+.numCell {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: 0.01em;
+}
+
+.resultCell {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: 0.01em;
+  transition: opacity 0.15s ease;
+}
+
+.lineTotal {
+  font-weight: 600;
+}
+
+.resultCell[data-pending='true'] {
+  opacity: 0.45;
+}
+
+.input {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0;
+  padding: 4px 6px;
+  outline: none;
+}
+
+.input:focus {
+  border-color: var(--accent);
+  background: var(--white);
+}
+
+.numInput {
+  text-align: right;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: 0.01em;
+}
+
+.discount {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.discountControls {
+  display: flex;
+  gap: 6px;
+}
+
+.fieldError {
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  color: var(--danger);
+}
+
+.textlink {
+  color: var(--ink);
+  font-size: 13px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--sand);
+  padding: 0 0 1px;
+  cursor: pointer;
+}
+
+.textlink:hover {
+  color: var(--accent-deep);
+  border-bottom-color: var(--accent);
+}
+
+.sectionLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--ink-soft);
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sectionLabel::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--sand);
+}
+
+.totals {
+  display: flex;
+  flex-direction: column;
+  min-width: 320px;
+}
+
+.trow {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--sand);
+  transition: opacity 0.15s ease;
+}
+
+.totals[data-pending='true'] .trow {
+  opacity: 0.45;
+}
+
+.tl {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.tv {
+  font-size: 16px;
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: 0.01em;
+}
+
+.grand {
+  border-bottom: none;
+  border-top: 2px solid var(--ink);
+  margin-top: 4px;
+  padding-top: 14px;
+}
+
+.grand .tl {
+  color: var(--ink);
+}
+
+.grand .tv {
+  font-size: 26px;
+  font-weight: 500;
+}
+
+.pendingNote {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: right;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
