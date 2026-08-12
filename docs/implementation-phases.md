@@ -32,15 +32,15 @@ A take-home submission for a Full Stack role. The PDF (`docs/multi-rate-pricing-
 
 ## Two rules that produce this plan
 
-**1. The contract is the unit of work, not the layer.** Each phase opens by writing the zod schemas for its endpoints in the backend, and the mirrored response types in the frontend client. The two apps stay genuinely independent — no shared package, no workspace — so the types are duplicated by hand, deliberately. This project's lifecycle ends at the interview; a shared package would buy drift-proofing that only pays off over months of maintenance, at the cost of coupling two Docker builds today.
+**1. The contract is the unit of work, not the layer.** Each phase opens by defining the endpoint schemas in the backend and the small set of response types needed by the frontend client. The two apps stay independent — no shared package, generated client, or contract-synchronization system. Those solve long-term drift that this take-home does not have.
 
-Drift is caught instead by rule 2: every phase ends with a browser flow that exercises the real endpoint. A renamed field breaks that flow in the same phase that renamed it.
+Drift is caught instead by rule 2: every phase ends with one Cypress happy path that exercises the real endpoint. A renamed field breaks that flow in the same phase that renamed it.
 
-**2. A phase is done when a human can do something in a browser.** Each phase closes with a demo script: real clicks against the Compose stack. This prevents a backend that runs four phases ahead of a UI nobody built, and it is what keeps the duplicated types honest.
+**2. A phase is done when a human can do something in a browser.** Each phase closes with a short Cypress flow and the equivalent demo script against the Compose stack. This prevents a backend that runs four phases ahead of a UI nobody built, and it is what keeps the duplicated types honest. Cypress covers one happy path per phase; API and integration tests carry the edge cases.
 
 **Ordering is by risk retired.** Pricing first, before any database — it carries three of the seven evaluation rows and needs no persistence to be correct. Identity second, because every later query is scoped by it and retrofitting ownership is how leaks get written. Lifecycle gets its own phase because immutability is a rule over *every* mutating route, and proving a negative deserves dedicated attention. Reporting late, because it needs documents created by the real flow.
 
-Rejected: **layer-first** (all backend, then all frontend) defers every integration risk to the end. **Page-first** smears the calculation across whichever screen needed it first — precisely what the "single shared module" criterion is testing for.
+Avoided: **layer-first** (all backend, then all frontend) defers integration risk to the end. **Page-first** risks spreading calculation logic across screens — precisely what the "single shared module" criterion is testing for.
 
 ---
 
@@ -52,14 +52,14 @@ Made on the PDF's terms. It says: *"If anything is ambiguous, make a reasonable 
 |---|---|---|
 | Money storage | Integer **cents** | PDF: "avoid floating-point drift". No float reaches the domain. |
 | Money on the wire | JSON numbers in major units | Reject >2 dp at the schema instead of adding a string-conversion layer. |
-| Quantity | Decimal to 3 dp, integer **milli-units** | PDF types it *Number (≥ 1)*. Integer-only would silently narrow the spec. |
-| Percentages | Integer **basis points** | `0.1` isn't representable in binary floating point. |
-| Rounding | Half-up away from zero, 2 dp per line; document totals sum rounded lines | The PDF's sample expects exactly this. `Math.round` is half-up toward +∞ and wrong on negatives — explicit helper. |
+| Quantity | Decimal to 3 dp, represented internally as scaled integers | PDF types it *Number (≥ 1)*. Integer-only would silently narrow the spec. Scaling stays behind conversion helpers. |
+| Percentages | Integer **basis points**, behind conversion helpers | Avoids floating-point drift without leaking the storage representation through the domain. |
+| Rounding | Half-up **away from zero**, 2 dp per line; document totals sum rounded lines | Precise even though the domain rejects negative inputs. Use one explicit helper rather than relying on JavaScript's rounding behavior. |
 | **Fixed discount > line subtotal** | **Reject**, code `DISCOUNT_EXCEEDS_SUBTOTAL` | PDF allows reject or clamp. Rejecting produces a specific error message, which is a scored row; clamping silently rewrites user input and produces nothing to grade. |
 | **Report scope** | **All documents in range, drafts included** | The PDF filters the report by issue date and says nothing about status. Filtering by status would be an unstated narrowing. Documented as an assumption. |
 | Line items | **Embedded** in the document | Lines never outlive their document; finalize freezes the whole aggregate. Single-document atomicity, no transactions. |
 | Discount shape | Discriminated union (`none` \| `percent` \| `fixed`) | PDF: "percent or fixed, not both" becomes unrepresentable rather than runtime-checked. |
-| Stretch goals | All three | Duplicate and finalize-validation reuse work from Phase 4; printable view is a template over data that already exists. |
+| Stretch goals | Only after the required flow is complete | Duplicate and printable view are useful polish; neither may delay correctness, deployment, or the README. Finalize reuses the normal document validator defensively. |
 
 ## Shape
 
@@ -69,19 +69,19 @@ apps/frontend/        Next.js App Router. Own package.json, own types, own Docke
 infra/compose.yml     mongo · backend · frontend
 ```
 
-Two independent projects sharing nothing but the HTTP contract. Each builds from its own directory.
+Two independent projects sharing nothing but the HTTP contract. This makes the API boundary visible without introducing a workspace, shared package, or generated client.
 
-## Test ladder
+## Testing strategy
 
-Every phase climbs the same rungs; if one doesn't apply, the phase says so.
+Tests follow risk rather than forcing every feature through the same ladder:
 
-| Rung | Tool | Answers |
+| Surface | Approach | Why |
 |---|---|---|
-| Unit | Vitest | Is the logic right? |
-| Integration | Vitest + testcontainers | Does it survive a real Mongo? |
-| API | supertest | Does the contract hold, including failures? |
-| Component | Storybook | Does every UI state exist? |
-| E2E | Cypress | Does the demo script work? |
+| Pricing | Focused unit tests | Highest-value surface and easiest place to prove rounding behavior. |
+| Persistence and reporting | Integration tests against a test Mongo database | Proves ownership filters, storage, and aggregation behavior. Use Compose or Testcontainers, whichever stays simpler. |
+| REST contract and lifecycle | API tests | Proves validation errors and finalized-document immutability. |
+| Frontend | A few component tests for complex error/locked states, in **Vitest + Testing Library** | Avoid testing static presentation for its own sake. No Storybook requirement. Vitest keeps one runner across backend and frontend; Cypress stays reserved for real browser flows. |
+| Browser contract | One Cypress happy path per phase | Exercises each real endpoint through the duplicated frontend contract. Keep edge cases in faster API and integration tests. |
 
 ---
 
@@ -91,13 +91,13 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 **Contract** Health response — trivial on purpose. It establishes the pattern: schema in the backend, mirrored type in the frontend's API client, one browser flow proving both.
 
-**Backend** Fastify boot; zod-validated env config that refuses to start on a missing var; pino; one error envelope `{ error: { code, message, details } }`; `GET /health` with Mongo connectivity; graceful shutdown.
+**Backend** Fastify boot; validated env config; one error envelope `{ error: { code, message, details } }`; `GET /health` with Mongo connectivity; basic logging and shutdown handling.
 
 **Frontend** App Router; design tokens; shared shell; a page calling `/health` through the typed client.
 
-**Infra** Compose: `mongo` (single-node replica set, idempotent init), `backend`, `frontend`. Mongo publishes no host port.
+**Infra** Compose: `mongo`, `backend`, `frontend`. Use an ordinary Mongo container; embedded lines keep writes within one document, so a replica set and transaction setup buy nothing here. Mongo publishes no host port.
 
-**Tests** Unit: config rejects bad env. API: `/health`. Component: one primitive. E2E: page loads healthy. No integration rung — nothing persists yet.
+**Tests** API: `/health`. Cypress: the page loads and reports a healthy backend/database connection. Do not create component tests merely to test the skeleton.
 
 **Demo** `docker compose up` on a clean clone → browser shows the app talking to Mongo.
 
@@ -118,8 +118,8 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 - Unit: a case that discriminates the rounding policy (a line whose tax lands on a half-cent).
 - Unit: 100% discount, fixed discount equal to subtotal, fixed over subtotal (rejects), tax absent vs. `0`, decimal quantity, boundary values.
 - API: preview matches the engine exactly.
-- Component: line row, discount input in all three states, totals panel.
-- E2E: type the PDF's sample into the editor, assert `$421.50`.
+- Optional component test only if the discount-mode state becomes non-trivial.
+- Cypress: enter the PDF sample and assert the `$421.50` total returned through `/pricing/preview`.
 
 **Demo** Open the editor, enter the PDF's three sample lines, watch the totals resolve to its published numbers.
 
@@ -135,7 +135,7 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 **Frontend** Sign-in and create-account with real validation and server error display; auth context; protected routes; sign-out.
 
-**Tests** Integration: duplicate email rejected by the index, not only by app code. API: signup → login → me; wrong password 401; missing cookie 401. Component: field default/error/disabled. E2E: sign up, land in, sign out, get bounced.
+**Tests** Integration: duplicate email rejected by the index, not only by app code. API: signup → login → me; wrong password 401; missing cookie 401. Cypress: sign up, arrive at the protected app, sign out, and get redirected from it. Skip tests for purely presentational form states.
 
 **Demo** Register, get redirected in, sign out, fail to return without credentials.
 
@@ -147,11 +147,11 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 **Contract** Create/update shapes plus the error-code enum the UI renders against.
 
-**Backend** Full CRUD for documents and for lines on the embedded array. **Totals are recomputed by the Phase 1 engine and persisted on every write** — the client's numbers are never trusted, even when correct. Every validation failure carries a specific code and field path: `QUANTITY_TOO_LOW`, `UNIT_PRICE_NEGATIVE`, `TAX_PERCENT_OUT_OF_RANGE`, `DISCOUNT_TYPE_CONFLICT`, `DISCOUNT_EXCEEDS_SUBTOTAL`.
+**Backend** Full CRUD for documents and explicit nested line-item routes backed by the embedded array. The routes make compliance with the requested line-item CRUD obvious without introducing a separate collection. **Totals are recomputed by the Phase 1 engine and persisted on every write** — the client's numbers are never trusted, even when correct. Every validation failure carries a specific code and field path: `QUANTITY_TOO_LOW`, `UNIT_PRICE_NEGATIVE`, `TAX_PERCENT_OUT_OF_RANGE`, `DISCOUNT_TYPE_CONFLICT`, `DISCOUNT_EXCEEDS_SUBTOTAL`.
 
 **Frontend** Documents list with empty state and delete-with-confirm; the Phase 1 editor now loading and saving; field errors rendered inline from the API's codes — the scored row is about *specific* errors, so they have to be visible as such.
 
-**Tests** Integration: ownership isolation — a second user gets 404, not 403, on every route. API: one case per error code, asserting code and field path. Component: table, empty state, inline error, error banner. E2E: create → add lines → save → correct total in the list.
+**Tests** Integration: ownership isolation — a second user gets 404, not 403, on every route. API: one case per error code, asserting code and field path. Cypress: create a document, add the sample lines, save, reload, and see the correct total. Add a component test for mapping API field errors inline only if that mapping contains meaningful logic.
 
 **Demo** Create a document, add the sample lines, save, reload, see it persisted with correct totals; submit a negative quantity and see a specific message.
 
@@ -159,21 +159,21 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 ## Phase 4 — Lifecycle and immutability
 
-**Requirement 4. Retires: Lifecycle.** Plus stretch goals 1 and 2.
+**Requirement 4. Retires: Lifecycle.** Duplicate (stretch 1) lives here too — last in the phase, and only once the required flow is green. It reuses the create and finalize paths, so building it while that context is loaded is cheaper than revisiting it in Phase 6.
 
-**Contract** Finalize and duplicate responses, the `document_finalized` error.
+**Contract** Finalize response and the `document_finalized` error. Add the duplicate response only if that stretch endpoint is implemented.
 
-**Backend** `POST /documents/:id/finalize`, with pre-finalize validation rejecting qty ≤ 0 or negative prices (stretch 2). Every mutating route rejects a finalized document with **409 `document_finalized`** and a clear message. `POST /documents/:id/duplicate` returns a new draft with fresh ids and recomputed totals (stretch 1).
+**Backend** `POST /documents/:id/finalize`, defensively reusing the normal document validator rather than creating a separate validation subsystem. Every mutating route rejects a finalized document with **409 `document_finalized`** and a clear message. If the required flow is complete, `POST /documents/:id/duplicate` returns a new draft with fresh ids and recomputed totals.
 
-**Frontend** Finalize confirmation — it is irreversible. Read-only document view. Duplicate action. A 409 from a stale tab surfaces clearly rather than failing silently.
+**Frontend** Finalize confirmation — it is irreversible. Read-only document view. A 409 from a stale tab surfaces clearly rather than failing silently. Add the duplicate action with its stretch endpoint.
 
 **Tests**
 - API: **one parameterized test enumerating every mutating route** against a finalized document, each asserting 409. The PDF scores immutability *via the API*, so this is the evidence; adding a route that escapes it requires deliberately editing this list.
-- API: finalize rejected on an invalid line; finalize twice; duplicate from both states.
-- Component: locked banner, confirm dialog, read-only table.
-- E2E: finalize → attempt edit → locked → duplicate → edit the copy.
+- API: finalize rejected on invalid persisted data and finalize twice. Add duplicate cases if the stretch endpoint is implemented.
+- Component: confirm dialog and stale-tab `409` handling, where UI behavior merits focused coverage.
+- Cypress: finalize a draft, see the editor lock, and verify a stale write surfaces the API rejection.
 
-**Demo** Finalize, watch the UI lock, fail to edit it, duplicate, edit the copy.
+**Demo** Finalize, watch the UI lock, and show that a subsequent write is rejected by the API. If duplicate is implemented, create and edit the new draft.
 
 ---
 
@@ -185,9 +185,9 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 **Backend** `GET /reports/summary?from=&to=` — document count, sum of grand totals, sum of tax, sum of discount. One aggregation, scoped to the user, filtered on issue date, inclusive at both ends, timezone rule written down.
 
-**Frontend** Range inputs, stat cards, the in-range document table, empty state, `from > to` handled.
+**Frontend** Range inputs, stat cards, the in-range document table, empty state, `from > to` handled. State visibly that both draft and finalized documents are included.
 
-**Tests** Integration: **reconciliation** — the aggregate equals the sum of the individual documents in range; this is the criterion verbatim. Integration: documents issued exactly on `from` and on `to` are included; another user's documents never counted. E2E: run a report, totals match the table.
+**Tests** Integration: **reconciliation** — the aggregate equals the sum of the individual documents in range; this is the criterion verbatim. Documents issued exactly on `from` and on `to` are included; another user's documents never count. Cypress: run a date-range report and verify its cards match the displayed in-range documents.
 
 **Demo** Create documents across two months, run each range, watch the cards reconcile with the rows.
 
@@ -199,10 +199,12 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 **README** Prerequisites and step-by-step setup; the calculation and rounding policy **with the PDF's worked example**; finalize/immutability rules; assumptions and tradeoffs, including the two policy calls above; what you'd improve before production; the live URL.
 
-**Backend** OpenAPI from the shared schemas (near-free once contracts exist); a seed script so a reviewer sees data immediately.
+**Backend** A seed script so a reviewer can see data immediately. Generate OpenAPI only if it falls naturally out of the chosen Fastify schema setup; do not add a client-generation or documentation pipeline.
 
-**Frontend** Printable view (stretch 3).
+**Frontend** Basic responsive behavior, semantic controls, connected field errors, visible focus, and keyboard-accessible confirmation. This is a bounded quality pass, not a formal accessibility audit.
 
-**Only if everything above is green:** responsive fixes and an accessibility pass. Neither is in the evaluation table; both are polish, and polish never precedes a scored row.
+**Only if everything above is green:** a printable HTML view (stretch 3). Document numbering such as `Q-2026-014` stays a display concern; do not build configurable or concurrency-safe numbering machinery for an unstated requirement.
+
+**Tests** Cypress: run the reviewer's core journey from signup through calculation, persistence, finalization, and reporting. This final flow proves the documented setup and submission path; it does not duplicate every API edge case.
 
 **Demo** A stranger clones, runs `docker compose up`, signs up, reproduces `421.50`, finalizes, fails to edit, runs a report — from the README alone.
