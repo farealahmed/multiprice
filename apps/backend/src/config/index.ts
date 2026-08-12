@@ -34,17 +34,13 @@ export class InvalidConfigError extends Error {
 /**
  * Parse `process.env` (or an injected record) against the schema.
  * Throws `InvalidConfigError` on validation failure.
+ *
+ * Parse-on-boot: parsing happens once at boot. Importing this from a request
+ * handler is fine — the result is a frozen plain object and the schema is
+ * not re-evaluated on the hot path.
  */
-export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
+export function buildConfig(source: NodeJS.ProcessEnv = process.env): Env {
   const parsed = envSchema.safeParse(source);
   if (!parsed.success) throw new InvalidConfigError(parsed.error.issues);
   return parsed.data;
-}
-
-/**
- * Build a frozen config object. Importing this from a request handler is fine;
- * parsing happens once at boot.
- */
-export function buildConfig(source: NodeJS.ProcessEnv = process.env): Env {
-  return loadEnv(source);
 }

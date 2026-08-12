@@ -28,7 +28,9 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   const response = await fetch(path, { ...init, credentials: 'include' });
 
   if (response.ok) {
-    return response.json() as Promise<T>;
+    return response.json().catch(() => {
+      throw new ApiError('INTERNAL_ERROR', 'An unexpected error occurred.');
+    }) as Promise<T>;
   }
 
   const body = (await response.json().catch(() => undefined)) as ApiErrorBody | undefined;
