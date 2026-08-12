@@ -5,8 +5,8 @@ _Phase 0 fans out from a single serial gate (T1) into three parallel lanes (T2/T
 | Task | Role | Mode | Depends on | Parallel with | Status |
 |---|---|---|---|---|---|
 | **T1** — G0: Conventions and the health contract | backend-engineer | `checklist` | — | — | **done** (commit `2cf4713`) |
-| **T2** — Lane 0-A: Backend runtime | backend-engineer | `test-after` | T1 | T3, T4 | pending |
-| **T3** — Lane 0-B: Frontend shell | frontend-engineer | `test-after` | T1 | T2, T4 | pending |
+| **T2** — Lane 0-A: Backend runtime | backend-engineer | `test-after` | T1 | T3, T4 | **in progress** |
+| **T3** — Lane 0-B: Frontend shell | frontend-engineer | `test-after` | T1 | T2, T4 | **in progress** |
 | **T4** — Lane 0-C: Infra and E2E harness | infra-engineer | `checklist` | T1 | T2, T3 | pending |
 
 ---
@@ -203,6 +203,7 @@ An App Router application carrying the mockups' visual system, with a typed `fet
 | `apps/frontend/src/components/shell/nav-items.ts` | Exports `NAV_ITEMS` array; later phases append, no shell editing. |
 | `apps/frontend/src/lib/api/client.ts` | `apiFetch<T>(path, init?)`; relative `/api/...`; `credentials: 'include'` unconditional; throws typed `ApiError` on non-2xx. |
 | `apps/frontend/src/lib/api/client.test.ts` | Non-2xx → `ApiError` with envelope `code` + `details`; 2xx → parsed JSON; `credentials: 'include'` static check. |
+| `apps/frontend/src/test-setup.ts` | Vitest setup required by the existing frontend configuration. |
 
 ### Implementation notes
 
