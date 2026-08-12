@@ -8,16 +8,16 @@
     "node": ">=22"
   },
   "scripts": {
-    "up": "make up",
-    "down": "make down",
-    "logs": "make logs",
-    "reset": "make reset",
-    "dev-db": "make dev-db",
-    "dev-api": "make dev-api",
-    "dev-web": "make dev-web",
-    "db-shell": "make db-shell",
-    "test": "make test",
-    "e2e": "make e2e",
+    "up": "docker compose up --build -d",
+    "down": "docker compose down",
+    "logs": "docker compose logs -f",
+    "reset": "docker compose down -v",
+    "dev-db": "docker compose -f compose.dev.yml up -d",
+    "dev-api": "npm --prefix apps/backend run dev",
+    "dev-web": "npm --prefix apps/frontend run dev",
+    "db-shell": "docker compose exec mongo mongosh mongodb://localhost:27017/multiprice",
+    "test": "npm --prefix apps/backend test && npm --prefix apps/frontend test",
+    "e2e": "cypress run --config-file e2e/cypress.config.js --spec e2e/health.cy.js",
     "cypress:verify": "cypress verify"
   },
   "devDependencies": {
