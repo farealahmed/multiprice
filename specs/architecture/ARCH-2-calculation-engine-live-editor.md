@@ -434,7 +434,7 @@ downstream — the engine, the route, the UI — builds against this without wai
 
 ## Task T2: Pricing engine
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** tdd
 > **Effort:** m
 > **Priority:** critical
@@ -565,7 +565,7 @@ depend on the one before existing and being correct — the PDF sample assertion
 
 ## Task T3: Preview endpoint
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** tdd
 > **Effort:** m
 > **Priority:** high
