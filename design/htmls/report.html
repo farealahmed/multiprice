@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Summary report — Tallymark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Noto+Sans:wght@400;600&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="documents.html">
+    <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <span class="brand-name">Tallymark</span>
+    <span class="brand-sub">Multi-Rate Pricing</span>
+  </a>
+  <nav class="topnav">
+    <a href="documents.html">Documents</a>
+    <a href="report.html" class="active">Summary report</a>
+    <span class="who">Signed in as <b>j.doe@tallymark.io</b></span>
+    <a href="index.html">Sign out</a>
+  </nav>
+</header>
+
+<main class="page page-wide">
+  <div class="page-head">
+    <div class="kicker">Reporting</div>
+    <h1>Summary report</h1>
+    <p class="lede">Aggregates across documents by issue-date range. Reported totals always reconcile with the individual documents in range.</p>
+  </div>
+
+  <!-- date range filter -->
+  <div class="panel" style="margin-bottom:8px">
+    <div class="section-label">Date range · issue date</div>
+    <div class="split" style="align-items:flex-end">
+      <div class="btnrow grow" style="gap:22px">
+        <div class="field" style="min-width:180px">
+          <label for="from">From</label>
+          <input id="from" type="date" value="2026-07-01">
+        </div>
+        <div class="field" style="min-width:180px">
+          <label for="to">To</label>
+          <input id="to" type="date" value="2026-07-31">
+        </div>
+        <button class="btn primary" type="button" onclick="showRange()">Run report <span class="arr">→</span></button>
+      </div>
+      <div class="btnrow">
+        <button class="btn small ghost" type="button" onclick="preset('jul')">July 2026</button>
+        <button class="btn small ghost" type="button" onclick="preset('aug')">August 2026</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ JULY RESULT ============ -->
+  <section id="r-jul">
+    <div class="statrow">
+      <div class="stat">
+        <div class="sl">Documents</div>
+        <div class="sv num">2</div>
+        <div class="ss">2026-07-01 → 2026-07-31</div>
+      </div>
+      <div class="stat hero">
+        <div class="sl">Sum of grand totals</div>
+        <div class="sv num">$7,426.78</div>
+        <div class="ss">2,206.78 + 5,220.00</div>
+      </div>
+      <div class="stat">
+        <div class="sl">Sum of total tax</div>
+        <div class="sv num">$274.58</div>
+        <div class="ss">154.58 + 120.00</div>
+      </div>
+      <div class="stat">
+        <div class="sl">Sum of total discount</div>
+        <div class="sv num">$401.80</div>
+        <div class="ss">101.80 + 300.00</div>
+      </div>
+    </div>
+
+    <div class="section-label">Documents in range</div>
+    <table class="grid">
+      <thead>
+        <tr>
+          <th style="width:110px">Number</th>
+          <th>Title</th>
+          <th>Customer</th>
+          <th style="width:110px">Issue date</th>
+          <th style="width:110px">Status</th>
+          <th class="r">Subtotal</th>
+          <th class="r">Discount</th>
+          <th class="r">Tax</th>
+          <th class="r">Grand total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="num rowlink"><a href="document-view.html">Q-2026-011</a></td>
+          <td>Consulting Retainer — Q3</td>
+          <td>Brightpath LLC</td>
+          <td class="num">2026-07-15</td>
+          <td><span class="status final">Finalized</span></td>
+          <td class="r num">5,400.00</td>
+          <td class="r num">300.00</td>
+          <td class="r num">120.00</td>
+          <td class="r num" style="font-weight:600">5,220.00</td>
+        </tr>
+        <tr>
+          <td class="num rowlink"><a href="document-view.html">Q-2026-013</a></td>
+          <td>Office Furniture Quote</td>
+          <td>Northwind Traders</td>
+          <td class="num">2026-07-28</td>
+          <td><span class="status final">Finalized</span></td>
+          <td class="r num">2,154.00</td>
+          <td class="r num">101.80</td>
+          <td class="r num">154.58</td>
+          <td class="r num" style="font-weight:600">2,206.78</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5">Totals · 2 documents</td>
+          <td class="r num">7,554.00</td>
+          <td class="r num">401.80</td>
+          <td class="r num">274.58</td>
+          <td class="r num">7,426.78</td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+
+  <!-- ============ AUGUST RESULT ============ -->
+  <section id="r-aug" class="hidden">
+    <div class="statrow">
+      <div class="stat">
+        <div class="sl">Documents</div>
+        <div class="sv num">2</div>
+        <div class="ss">2026-08-01 → 2026-08-31</div>
+      </div>
+      <div class="stat hero">
+        <div class="sl">Sum of grand totals</div>
+        <div class="sv num">$1,235.25</div>
+        <div class="ss">421.50 + 813.75</div>
+      </div>
+      <div class="stat">
+        <div class="sl">Sum of total tax</div>
+        <div class="sv num">$50.25</div>
+        <div class="ss">11.50 + 38.75</div>
+      </div>
+      <div class="stat">
+        <div class="sl">Sum of total discount</div>
+        <div class="sv num">$115.00</div>
+        <div class="ss">40.00 + 75.00</div>
+      </div>
+    </div>
+
+    <div class="section-label">Documents in range</div>
+    <table class="grid">
+      <thead>
+        <tr>
+          <th style="width:110px">Number</th>
+          <th>Title</th>
+          <th>Customer</th>
+          <th style="width:110px">Issue date</th>
+          <th style="width:110px">Status</th>
+          <th class="r">Subtotal</th>
+          <th class="r">Discount</th>
+          <th class="r">Tax</th>
+          <th class="r">Grand total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="num rowlink"><a href="document-edit.html">Q-2026-014</a></td>
+          <td>Website Redesign Proposal</td>
+          <td>Acme Corp</td>
+          <td class="num">2026-08-02</td>
+          <td><span class="status draft">Draft</span></td>
+          <td class="r num">450.00</td>
+          <td class="r num">40.00</td>
+          <td class="r num">11.50</td>
+          <td class="r num" style="font-weight:600">421.50</td>
+        </tr>
+        <tr>
+          <td class="num rowlink"><a href="document-edit.html">Q-2026-015</a></td>
+          <td>Product Bundle — Beta</td>
+          <td>Acme Corp</td>
+          <td class="num">2026-08-09</td>
+          <td><span class="status draft">Draft</span></td>
+          <td class="r num">850.00</td>
+          <td class="r num">75.00</td>
+          <td class="r num">38.75</td>
+          <td class="r num" style="font-weight:600">813.75</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5">Totals · 2 documents</td>
+          <td class="r num">1,300.00</td>
+          <td class="r num">115.00</td>
+          <td class="r num">50.25</td>
+          <td class="r num">1,235.25</td>
+        </tr>
+      </tfoot>
+    </table>
+  </section>
+</main>
+
+<footer class="footer">
+  <span>Tallymark — demo UI, hardcoded data</span>
+  <span class="footnote-squares" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+  <span>Reconciles with documents in range</span>
+</footer>
+
+<script>
+  const jul = document.getElementById('r-jul');
+  const aug = document.getElementById('r-aug');
+  const from = document.getElementById('from');
+  const to = document.getElementById('to');
+  function preset(which) {
+    if (which === 'jul') { from.value = '2026-07-01'; to.value = '2026-07-31'; }
+    else { from.value = '2026-08-01'; to.value = '2026-08-31'; }
+    showRange();
+  }
+  function showRange() {
+    const isAug = from.value >= '2026-08-01';
+    jul.classList.toggle('hidden', isAug);
+    aug.classList.toggle('hidden', !isAug);
+  }
+</script>
+
+</body>
+</html>

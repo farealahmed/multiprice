@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Q-2026-013 · Finalized — Tallymark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Noto+Sans:wght@400;600&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="documents.html">
+    <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <span class="brand-name">Tallymark</span>
+    <span class="brand-sub">Multi-Rate Pricing</span>
+  </a>
+  <nav class="topnav">
+    <a href="documents.html" class="active">Documents</a>
+    <a href="report.html">Summary report</a>
+    <span class="who">Signed in as <b>j.doe@tallymark.io</b></span>
+    <a href="index.html">Sign out</a>
+  </nav>
+</header>
+
+<main class="page page-wide">
+  <div class="page-head split">
+    <div>
+      <div class="kicker">Document · Q-2026-013</div>
+      <h1>Office Furniture Quote</h1>
+      <p class="lede"><span class="status final">Finalized</span> &nbsp;—&nbsp; read-only. Finalized 2026-07-28 14:32 UTC by j.doe@tallymark.io.</p>
+    </div>
+    <div style="padding-top:34px" class="btnrow">
+      <a class="btn ghost" href="documents.html"><span class="arr">←</span> Back</a>
+      <a class="btn" href="print.html">Printable view</a>
+      <a class="btn primary" href="document-edit.html">Duplicate as draft <span class="arr">→</span></a>
+    </div>
+  </div>
+
+  <div class="notice locked" style="margin-bottom:34px">
+    <span class="sq"></span>
+    <span><b>Locked.</b> Lines, amounts, and metadata cannot be edited. Any write attempt is rejected by the API with <b>409 document_finalized — “document is finalized and read-only”</b>. Duplicate it to keep working on a copy.</span>
+  </div>
+
+  <!-- metadata, read-only -->
+  <div class="panel cream" style="margin-bottom:34px">
+    <div class="section-label">Details</div>
+    <div class="meta-grid">
+      <div class="field"><label>Title</label><input type="text" value="Office Furniture Quote" disabled></div>
+      <div class="field"><label>Customer</label><input type="text" value="Northwind Traders" disabled></div>
+      <div class="field"><label>Issue date</label><input type="date" value="2026-07-28" disabled></div>
+      <div class="field"><label>Status</label><input type="text" value="finalized" disabled></div>
+    </div>
+  </div>
+
+  <!-- line items, read-only -->
+  <div class="section-label">Line items</div>
+  <table class="grid">
+    <thead>
+      <tr>
+        <th style="width:36px">#</th>
+        <th>Description</th>
+        <th class="r" style="width:70px">Qty</th>
+        <th class="r" style="width:110px">Unit price</th>
+        <th style="width:130px">Discount</th>
+        <th class="r" style="width:80px">Tax %</th>
+        <th class="r" style="width:110px">Subtotal</th>
+        <th class="r" style="width:110px">Disc. amt</th>
+        <th class="r" style="width:110px">After disc.</th>
+        <th class="r" style="width:100px">Tax amt</th>
+        <th class="r" style="width:120px">Line total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="num">1</td>
+        <td>Ergonomic chair</td>
+        <td class="r num">4</td>
+        <td class="r num">259.00</td>
+        <td>5 %</td>
+        <td class="r num">8</td>
+        <td class="r num">1,036.00</td>
+        <td class="r num">51.80</td>
+        <td class="r num">984.20</td>
+        <td class="r num">78.74</td>
+        <td class="r num" style="font-weight:600">1,062.94</td>
+      </tr>
+      <tr>
+        <td class="num">2</td>
+        <td>Standing desk</td>
+        <td class="r num">2</td>
+        <td class="r num">499.00</td>
+        <td>$50.00 fixed</td>
+        <td class="r num">8</td>
+        <td class="r num">998.00</td>
+        <td class="r num">50.00</td>
+        <td class="r num">948.00</td>
+        <td class="r num">75.84</td>
+        <td class="r num" style="font-weight:600">1,023.84</td>
+      </tr>
+      <tr>
+        <td class="num">3</td>
+        <td>Delivery &amp; installation</td>
+        <td class="r num">1</td>
+        <td class="r num">120.00</td>
+        <td>—</td>
+        <td class="r num">—</td>
+        <td class="r num">120.00</td>
+        <td class="r num">0.00</td>
+        <td class="r num">120.00</td>
+        <td class="r num">0.00</td>
+        <td class="r num" style="font-weight:600">120.00</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <hr class="rule-deco">
+
+  <div class="split">
+    <div class="grow"></div>
+    <div class="totals">
+      <div class="section-label">Document totals</div>
+      <div class="trow"><span class="tl">Subtotal</span><span class="tv num">$2,154.00</span></div>
+      <div class="trow"><span class="tl">Total discount</span><span class="tv num">− $101.80</span></div>
+      <div class="trow"><span class="tl">Total tax</span><span class="tv num">+ $154.58</span></div>
+      <div class="trow grand"><span class="tl">Grand total</span><span class="tv num">$2,206.78</span></div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <span>Tallymark — demo UI, hardcoded data</span>
+  <span class="footnote-squares" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+  <span>Q-2026-013 · finalized</span>
+</footer>
+
+</body>
+</html>

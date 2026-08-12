@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in — Tallymark · Multi-Rate Pricing Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Noto+Sans:wght@400;600&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="auth-wrap">
+
+  <aside class="auth-aside">
+    <div>
+      <div class="brand" style="color:var(--bg)">
+        <span class="brand-mark" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </span>
+        <span class="brand-name">Tallymark</span>
+      </div>
+      <div style="margin-top:64px">
+        <div class="tag">Multi-Rate Pricing Calculator</div>
+        <h2>Every line priced.<br>Every discount <em>before</em> tax.<br>Every total exact.</h2>
+        <p class="fine">Documents with per-line discounts and tax rules, a strict draft → finalized lifecycle, and summary reporting across any date range.</p>
+      </div>
+    </div>
+    <div class="foot">Rounding: half-up · 2 decimals per line</div>
+    <svg class="deco" width="340" height="340" viewBox="0 0 340 340" fill="none" aria-hidden="true">
+      <path d="M20 320 C 90 200, 150 260, 220 140 S 320 60, 340 20" stroke="#bc773f" stroke-width="1.5"/>
+      <path d="M0 300 C 80 180, 160 240, 230 120 S 330 40, 360 0" stroke="#dec9b8" stroke-width="1"/>
+      <rect x="52" y="238" width="10" height="10" fill="#faf6f3"/>
+      <rect x="212" y="132" width="10" height="10" fill="#bc773f"/>
+      <rect x="292" y="52" width="10" height="10" fill="#faf6f3"/>
+    </svg>
+  </aside>
+
+  <main class="auth-main">
+    <div class="auth-card">
+      <div class="auth-tabs">
+        <button id="tab-in" class="on" type="button">Sign in</button>
+        <button id="tab-up" type="button">Create account</button>
+      </div>
+
+      <!-- Sign in -->
+      <form id="form-in" action="documents.html">
+        <div class="field">
+          <label for="email-in">Email</label>
+          <input id="email-in" type="email" value="j.doe@tallymark.io" required>
+        </div>
+        <div class="field">
+          <label for="pass-in">Password</label>
+          <input id="pass-in" type="password" value="correct-horse-battery" required>
+        </div>
+        <button class="btn primary" type="submit" style="justify-content:center">
+          Sign in <span class="arr">→</span>
+        </button>
+      </form>
+
+      <!-- Create account -->
+      <form id="form-up" class="hidden" action="documents.html">
+        <div class="field">
+          <label for="email-up">Email</label>
+          <input id="email-up" type="email" placeholder="you@company.com" required>
+        </div>
+        <div class="field">
+          <label for="pass-up">Password</label>
+          <input id="pass-up" type="password" placeholder="8+ characters" minlength="8" required>
+        </div>
+        <div class="field">
+          <label for="pass-up2">Confirm password</label>
+          <input id="pass-up2" type="password" placeholder="Repeat password" minlength="8" required>
+        </div>
+        <button class="btn primary" type="submit" style="justify-content:center">
+          Create account <span class="arr">→</span>
+        </button>
+      </form>
+
+      <p class="auth-note">Demo build — all data is hardcoded. Any credentials will sign you in as <b>j.doe@tallymark.io</b>. Each user only ever sees their own documents.</p>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  const tabIn = document.getElementById('tab-in');
+  const tabUp = document.getElementById('tab-up');
+  const formIn = document.getElementById('form-in');
+  const formUp = document.getElementById('form-up');
+  tabIn.onclick = () => { tabIn.classList.add('on'); tabUp.classList.remove('on'); formIn.classList.remove('hidden'); formUp.classList.add('hidden'); };
+  tabUp.onclick = () => { tabUp.classList.add('on'); tabIn.classList.remove('on'); formUp.classList.remove('hidden'); formIn.classList.add('hidden'); };
+</script>
+
+</body>
+</html>

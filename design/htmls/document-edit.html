@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Q-2026-014 · Draft — Tallymark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Noto+Sans:wght@400;600&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <a class="brand" href="documents.html">
+    <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+    <span class="brand-name">Tallymark</span>
+    <span class="brand-sub">Multi-Rate Pricing</span>
+  </a>
+  <nav class="topnav">
+    <a href="documents.html" class="active">Documents</a>
+    <a href="report.html">Summary report</a>
+    <span class="who">Signed in as <b>j.doe@tallymark.io</b></span>
+    <a href="index.html">Sign out</a>
+  </nav>
+</header>
+
+<main class="page page-wide">
+  <div class="page-head split">
+    <div>
+      <div class="kicker">Document · Q-2026-014</div>
+      <h1>Website Redesign Proposal</h1>
+      <p class="lede"><span class="status draft">Draft</span> &nbsp;—&nbsp; fully editable. All totals are computed server-side; this form never decides the numbers.</p>
+    </div>
+    <div style="padding-top:34px" class="btnrow">
+      <a class="btn ghost" href="documents.html"><span class="arr">←</span> Back</a>
+      <a class="btn accent" href="document-view.html">Finalize <span class="arr">→</span></a>
+    </div>
+  </div>
+
+  <!-- metadata -->
+  <div class="panel" style="margin-bottom:34px">
+    <div class="section-label">Details</div>
+    <div class="meta-grid">
+      <div class="field">
+        <label for="f-title">Title</label>
+        <input id="f-title" type="text" value="Website Redesign Proposal">
+      </div>
+      <div class="field">
+        <label for="f-customer">Customer</label>
+        <input id="f-customer" type="text" value="Acme Corp">
+      </div>
+      <div class="field">
+        <label for="f-date">Issue date</label>
+        <input id="f-date" type="date" value="2026-08-02">
+      </div>
+      <div class="field">
+        <label for="f-status">Status</label>
+        <input id="f-status" type="text" value="draft" disabled>
+      </div>
+    </div>
+  </div>
+
+  <!-- line items -->
+  <div class="section-label">Line items · discount before tax · percent <i>or</i> fixed, never both</div>
+  <table class="grid">
+    <thead>
+      <tr>
+        <th style="width:36px">#</th>
+        <th>Description</th>
+        <th class="r" style="width:80px">Qty</th>
+        <th class="r" style="width:110px">Unit price</th>
+        <th style="width:150px">Discount</th>
+        <th class="r" style="width:90px">Tax %</th>
+        <th class="r" style="width:100px">Subtotal</th>
+        <th class="r" style="width:100px">Disc. amt</th>
+        <th class="r" style="width:100px">Tax amt</th>
+        <th class="r" style="width:110px">Line total</th>
+        <th style="width:60px"></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="num">1</td>
+        <td><input type="text" value="Widget A"></td>
+        <td><input class="num" type="number" value="2" min="1"></td>
+        <td><input class="num" type="number" value="100.00" min="0" step="0.01"></td>
+        <td>
+          <select>
+            <option>— none —</option>
+            <option selected>10 %</option>
+            <option>$ fixed</option>
+          </select>
+        </td>
+        <td><input class="num" type="number" value="5" min="0" max="100" step="0.01"></td>
+        <td class="r num">200.00</td>
+        <td class="r num">20.00</td>
+        <td class="r num">9.00</td>
+        <td class="r num" style="font-weight:600">189.00</td>
+        <td><a class="textlink" href="#">Remove</a></td>
+      </tr>
+      <tr>
+        <td class="num">2</td>
+        <td><input type="text" value="Widget B"></td>
+        <td><input class="num" type="number" value="1" min="1"></td>
+        <td><input class="num" type="number" value="50.00" min="0" step="0.01"></td>
+        <td>
+          <select>
+            <option selected>— none —</option>
+            <option>% percent</option>
+            <option>$ fixed</option>
+          </select>
+        </td>
+        <td><input class="num" type="number" value="5" min="0" max="100" step="0.01"></td>
+        <td class="r num">50.00</td>
+        <td class="r num">0.00</td>
+        <td class="r num">2.50</td>
+        <td class="r num" style="font-weight:600">52.50</td>
+        <td><a class="textlink" href="#">Remove</a></td>
+      </tr>
+      <tr>
+        <td class="num">3</td>
+        <td><input type="text" value="Service fee"></td>
+        <td><input class="num" type="number" value="1" min="1"></td>
+        <td><input class="num" type="number" value="200.00" min="0" step="0.01"></td>
+        <td>
+          <select>
+            <option>— none —</option>
+            <option>% percent</option>
+            <option selected>$ 20.00 fixed</option>
+          </select>
+        </td>
+        <td><input class="num" type="number" value="0" min="0" max="100" step="0.01"></td>
+        <td class="r num">200.00</td>
+        <td class="r num">20.00</td>
+        <td class="r num">0.00</td>
+        <td class="r num" style="font-weight:600">180.00</td>
+        <td><a class="textlink" href="#">Remove</a></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="margin-top:16px" class="btnrow">
+    <button class="btn small" type="button">+ Add line</button>
+    <span style="font-size:12px;color:var(--ink-soft)">Fixed discounts are clamped to the line subtotal — never below zero.</span>
+  </div>
+
+  <hr class="rule-deco">
+
+  <!-- totals + actions -->
+  <div class="split">
+    <div class="grow">
+      <div class="section-label">Validation</div>
+      <div class="notice">
+        <span class="sq" style="background:var(--accent)"></span>
+        <span>Specific errors, e.g. <b>quantity must be ≥ 1</b>, <b>tax percent must be 0–100</b>, <b>a line may have a percent or fixed discount, not both</b>. Finalize is rejected if any line has qty ≤ 0 or a negative price.</span>
+      </div>
+    </div>
+    <div class="totals">
+      <div class="section-label">Document totals</div>
+      <div class="trow"><span class="tl">Subtotal</span><span class="tv num">$450.00</span></div>
+      <div class="trow"><span class="tl">Total discount</span><span class="tv num">− $40.00</span></div>
+      <div class="trow"><span class="tl">Total tax</span><span class="tv num">+ $11.50</span></div>
+      <div class="trow grand"><span class="tl">Grand total</span><span class="tv num">$421.50</span></div>
+      <div class="btnrow" style="margin-top:22px; justify-content:flex-end">
+        <button class="btn" type="button">Save draft</button>
+        <a class="btn primary" href="document-view.html">Finalize <span class="arr">→</span></a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <span>Tallymark — demo UI, hardcoded data</span>
+  <span class="footnote-squares" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
+  <span>Q-2026-014 · draft</span>
+</footer>
+
+</body>
+</html>
