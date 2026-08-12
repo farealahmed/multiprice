@@ -1,5 +1,7 @@
 # Phase 0 — Skeleton (lane briefs)
 
+GitHub issue: #1
+
 Plan context: `docs/implementation-phases.md` § Phase 0. Rules: `docs/parallel-execution.md`.
 Serves no evaluation row directly; makes every later phase demonstrable.
 

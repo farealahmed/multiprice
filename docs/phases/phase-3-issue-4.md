@@ -1,5 +1,7 @@
 # Phase 3 — Documents, line items, validation (lane briefs)
 
+GitHub issue: #4
+
 Plan context: `docs/implementation-phases.md` § Phase 3. Rules: `docs/parallel-execution.md`.
 **Requirements 2 and 6. Retires: Validation.**
 

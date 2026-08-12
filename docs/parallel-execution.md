@@ -120,7 +120,7 @@ You are Lane 3-A.
 Read, in order:
   docs/parallel-execution.md          (the rules — especially file ownership)
   docs/implementation-phases.md       (§Decisions and §Phase 3)
-  docs/phases/phase-3.md              (find "Lane 3-A" — that is your brief)
+  docs/phases/phase-3-issue-4.md      (find "Lane 3-A" — that is your brief)
   docs/contracts/phase-3.md           (the frozen contract you build against)
   docs/multi-rate-pricing-calculator.md  (the assignment itself, if you need it)
 
@@ -147,7 +147,7 @@ You are running Join J3.
 
 Read:
   docs/parallel-execution.md          (§Definition of done — every join)
-  docs/phases/phase-3.md              (the "Join J3" section — that is your checklist)
+  docs/phases/phase-3-issue-4.md      (the "Join J3" section — that is your checklist)
   docs/contracts/phase-3.md           (the authority when two lanes disagree)
   specs/lanes/3-*.md                  (what each lane reports, including its assumptions
                                        and anything it flagged for you)
