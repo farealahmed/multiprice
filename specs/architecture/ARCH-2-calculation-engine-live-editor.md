@@ -737,7 +737,7 @@ _None._
 
 ## Task T5: Editor UI
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** ui
 > **Effort:** m
 > **Priority:** high
