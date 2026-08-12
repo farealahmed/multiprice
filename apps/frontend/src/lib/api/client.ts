@@ -28,6 +28,13 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   const response = await fetch(path, { ...init, credentials: 'include' });
 
   if (response.ok) {
+    // 204 (e.g. logout) and other no-content responses have no body to
+    // parse — response.json() throws on an empty string, which would
+    // otherwise turn a successful no-content response into an ApiError.
+    if (response.status === 204 || response.headers.get('content-length') === '0') {
+      return undefined as T;
+    }
+
     return response.json().catch(() => {
       throw new ApiError('INTERNAL_ERROR', 'An unexpected error occurred.');
     }) as Promise<T>;

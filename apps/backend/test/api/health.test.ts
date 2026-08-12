@@ -199,6 +199,7 @@ describe('config validation', () => {
     const cfg = buildConfig({
       MONGO_URL: 'mongodb://localhost:27017',
       MONGO_DB: 'multiprice',
+      JWT_SECRET: 'test-secret',
       // PORT and NODE_ENV absent → defaults kick in
     } as unknown as NodeJS.ProcessEnv);
     expect(cfg.PORT).toBe(3001);

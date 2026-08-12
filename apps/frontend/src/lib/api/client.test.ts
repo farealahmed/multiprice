@@ -44,6 +44,12 @@ describe('apiFetch', () => {
     });
   });
 
+  it('resolves with undefined on a 204 No Content response (e.g. logout)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
+
+    await expect(apiFetch<void>('/auth/logout', { method: 'POST' })).resolves.toBeUndefined();
+  });
+
   it('falls back to INTERNAL_ERROR for a non-envelope response', async () => {
     vi.stubGlobal(
       'fetch',
