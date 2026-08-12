@@ -28,6 +28,12 @@ describe('buildConfig — JWT_SECRET', () => {
     );
   });
 
+  it('rejects the .env.example placeholder value', () => {
+    expect(() =>
+      buildConfig({ ...validEnv, JWT_SECRET: 'replace-with-a-generated-secret' }),
+    ).toThrow(InvalidConfigError);
+  });
+
   it('keeps the COOKIE_NAME default', () => {
     expect(buildConfig(validEnv).COOKIE_NAME).toBe('mp_session');
   });

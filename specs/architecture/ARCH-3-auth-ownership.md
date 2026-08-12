@@ -382,6 +382,7 @@ developer and are captured in the Architecture Decisions Log:
 - Endpoint-specific rate limiting (e.g., a tighter cap on `/auth/login` alone to blunt credential stuffing more aggressively than the global cap) (reason: only a single global cap is in scope this phase, per developer decision A10; a stricter auth-specific tier is a reasonable follow-up if brute-force testing surfaces the need)
 - Session revocation / server-side session store (reason: stateless JWT with a fixed 7-day expiry is what the brief freezes; no logout-everywhere or revoke-on-password-change requirement stated)
 - Document routes, any UI beyond sign-in/create-account/sign-out (reason: explicit Lane 2-A/2-B guardrails — Phase 3 territory)
+- Per-client IP accuracy for the global rate limiter (reason: found during PR #10 review — `apps/frontend/next.config.ts`'s same-origin `rewrites()` proxy, which this design relies on for cookie handling, never forwards the true client IP to the backend; every user in the Compose topology shares one bucket. Verified against the installed Next.js version's bundled proxy implementation, which only sets `x-forwarded-host`. Fixing this needs either patching Next's bundled proxy code or a real reverse proxy in front of both services — both are infra changes beyond this phase; see the comment in `api/plugins/rate-limit.ts`. Developer decision, 2026-08-13: document and defer, since the 1000 req/min cap is generous enough that shared bucketing rarely bites in practice)
 
 ---
 

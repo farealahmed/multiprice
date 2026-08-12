@@ -14,6 +14,19 @@ const defaultOptions: FastifyRateLimitOptions = {
   timeWindow: '1 minute',
 };
 
+// Known limitation: this limits by `request.ip`, which in the Compose
+// topology is the frontend container's address, not the original browser's
+// — every user behind the Next.js same-origin rewrite (next.config.ts)
+// shares one bucket. Next's `rewrites()` proxy (next/dist/server/lib/
+// router-utils/proxy-request.js, verified against the installed version)
+// only ever sets `x-forwarded-host`; it does not forward `x-forwarded-for`,
+// so there is no header here to trust via `trustProxy`. Fixing this
+// properly needs either patching Next's bundled proxy (fragile across
+// upgrades) or a real reverse proxy in front of both services terminating
+// the true client connection — both are infra changes beyond this phase.
+// The 1000 req/min global cap is generous enough that shared bucketing
+// rarely bites; revisit if/when a reverse proxy is introduced.
+
 const rateLimitPlugin: FastifyPluginAsync<RateLimitPluginOptions> = async (
   app,
   { mode = process.env.NODE_ENV, options = {} },

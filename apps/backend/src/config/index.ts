@@ -15,8 +15,12 @@ const envSchema = z.object({
   MONGO_URL: z.string().min(1),
   MONGO_DB: z.string().min(1),
   // Phase 2: mandatory in every environment; an empty session secret must
-  // fail boot rather than make signed cookies forgeable.
-  JWT_SECRET: z.string().min(1),
+  // fail boot rather than make signed cookies forgeable. Also reject the
+  // documented .env.example placeholder itself — a known, public value is
+  // just as forgeable as an empty one if it's ever pasted in literally.
+  JWT_SECRET: z.string().min(1).refine((v) => v !== 'replace-with-a-generated-secret', {
+    message: 'JWT_SECRET must not be the .env.example placeholder value — generate a real secret',
+  }),
   COOKIE_NAME: z.string().default('mp_session'),
   BACKEND_ORIGIN: z.string().url().default('http://localhost:3001'),
 });
