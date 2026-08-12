@@ -58,23 +58,28 @@ describe('setupTestDb', () => {
 
   it('teardown drops the database', async () => {
     if (!(await reachable)) return; // skip — no Mongo available
-    const dbName = harness.db.databaseName;
-    const client = harness.db.client;
+    // Own harness, not the shared one — this test closes its client, and
+    // the shared `harness` still needs to be live for the outer afterAll.
+    const own = await setupTestDb();
+    const dbName = own.db.databaseName;
 
     // Write a collection + document so the db is non-empty.
-    await harness.db.collection('ping').insertOne({ ping: 1 });
+    await own.db.collection('ping').insertOne({ ping: 1 });
 
     // Drop and close.
-    await harness.drop();
+    await own.drop();
 
-    // Trying to access the db after dropDatabase() should fail (db no longer exists).
+    // Verify with an independent client — `own.drop()` already closed its
+    // own client, so reusing it would only prove "client is closed," not
+    // "database is gone."
+    const url = process.env.MONGO_URL!;
+    const checkClient = new MongoClient(url);
+    await checkClient.connect();
     try {
-      await client.db(dbName).command({ ping: 1 });
-      // If we reach here the db still exists — fail.
-      expect.fail('database should not exist after drop');
-    } catch (err) {
-      // Expected: command against a dropped db throws.
-      expect((err as Error).message).toContain(dbName);
+      const { databases } = await checkClient.db().admin().listDatabases();
+      expect(databases.map((d) => d.name)).not.toContain(dbName);
+    } finally {
+      await checkClient.close();
     }
   });
 });

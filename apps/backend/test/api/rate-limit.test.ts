@@ -86,11 +86,7 @@ async function liveAppReadyWithRateLimit(
 }
 
 /** Fire `count` concurrent requests against `server`. */
-async function flood(
-  server: FastifyInstance,
-  path: string,
-  count: number,
-): Promise<Array<{ statusCode: number; body: string; headers: Record<string, string | string[] | undefined> }>> {
+async function flood(server: FastifyInstance, path: string, count: number) {
   return Promise.all(
     Array.from({ length: count }, () =>
       server.inject({ method: 'GET', url: path }),
@@ -113,7 +109,8 @@ describe('global rate limit — enforcement', () => {
 
     // The 429 body matches the envelope shape from ARCH.
     const firstLimited = limited[0];
-    const body = JSON.parse(firstLimited.body);
+    expect(firstLimited).toBeDefined();
+    const body = JSON.parse(firstLimited!.body);
     expect(body).toEqual({
       error: {
         code: 'RATE_LIMITED',

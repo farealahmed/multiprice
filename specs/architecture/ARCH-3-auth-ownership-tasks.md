@@ -45,7 +45,7 @@ made after the ARCH doc's first draft. Confirmed with the developer before writi
 
 ## Task T1: Auth contract, frontend mirror, and contract docs
 
-> **Status:** pending
+> **Status:** done
 > **Verification:** tdd
 > **Effort:** m
 > **Priority:** critical
@@ -109,7 +109,7 @@ types alone.
 
 ## Task T2a: Ownership-scoped repository base helper
 
-> **Status:** pending
+> **Status:** done
 > **Verification:** tdd
 > **Effort:** s
 > **Priority:** critical
@@ -165,7 +165,7 @@ Mongo filter, so an unscoped call is a missing argument, not a runtime leak.
 
 ## Task T2b: Boot infra — index bootstrap, rate limiting, mandatory secret
 
-> **Status:** pending
+> **Status:** done
 > **Verification:** test-after
 > **Effort:** m
 > **Priority:** critical
@@ -239,7 +239,7 @@ are consumed by T4/T5; `@fastify/rate-limit` is consumed here).
 
 ## Task T3: Integration test harness
 
-> **Status:** pending
+> **Status:** done
 > **Verification:** test-after
 > **Effort:** m
 > **Priority:** critical
@@ -285,7 +285,7 @@ unmodified.
 
 ## Task T4: User domain, repository, and auth service
 
-> **Status:** pending
+> **Status:** done
 > **Verification:** tdd
 > **Effort:** l
 > **Priority:** critical
@@ -374,7 +374,7 @@ duplicate-key-to-`EMAIL_TAKEN` mapping both live here.
 
 ## Task T5: Auth HTTP routes and authenticate preHandler
 
-> **Status:** pending
+> **Status:** done
 > **Verification:** tdd
 > **Effort:** m
 > **Priority:** critical
@@ -441,7 +441,7 @@ never touched and stays the 500 fallback.
 
 ## Task T6: Backend verification lane — integration and API tests
 
-> **Status:** pending
+> **Status:** done
 > **Verification:** tdd
 > **Effort:** l
 > **Priority:** critical
@@ -527,7 +527,7 @@ is the "different lane doing verification" the developer asked for, mirroring Ph
 
 ## Task T7: Frontend auth client and session context
 
-> **Status:** pending
+> **Status:** done
 > **Verification:** tdd
 > **Effort:** m
 > **Priority:** critical
@@ -597,7 +597,7 @@ behavior-with-real-logic the brief calls out; T8 is markup and layout consuming 
 
 ## Task T8: Auth UI and shell sign-out
 
-> **Status:** pending
+> **Status:** done
 > **Verification:** ui
 > **Effort:** l
 > **Priority:** high
@@ -672,7 +672,7 @@ wiring T7's pieces into visible UI.
 
 ## Task T9: Join J2
 
-> **Status:** pending
+> **Status:** done
 > **Verification:** checklist
 > **Effort:** m
 > **Priority:** critical
