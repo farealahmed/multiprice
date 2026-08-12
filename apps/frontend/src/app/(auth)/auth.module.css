@@ -1,0 +1,169 @@
+.wrap {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  min-height: 100vh;
+}
+
+.aside {
+  background: var(--ink);
+  color: var(--bg);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  padding: 60px 56px;
+  position: relative;
+}
+
+.brand {
+  align-items: center;
+  display: flex;
+  font-family: var(--font-display);
+  font-size: 19px;
+  gap: 12px;
+  letter-spacing: 0.04em;
+}
+
+.brandMark {
+  display: grid;
+  gap: 2px;
+  grid-template-columns: repeat(3, 5px);
+}
+
+.brandMark i {
+  background: var(--bg);
+  display: block;
+  height: 5px;
+  width: 5px;
+}
+
+.brandMark i:nth-child(5) {
+  background: var(--accent);
+}
+
+.introduction {
+  margin-top: 64px;
+}
+
+.tag,
+.foot {
+  color: var(--sand);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.introduction h1 {
+  font-family: var(--font-display);
+  font-size: clamp(30px, 3.2vw, 44px);
+  font-weight: 400;
+  line-height: 1.2;
+  margin: 18px 0 0;
+}
+
+.introduction h1 em {
+  color: var(--accent);
+  font-style: normal;
+}
+
+.fine {
+  color: var(--sand);
+  font-size: 13px;
+  margin: 20px 0 0;
+  max-width: 40ch;
+}
+
+.foot {
+  color: var(--sand);
+  letter-spacing: 0.14em;
+}
+
+.deco {
+  bottom: -60px;
+  opacity: 0.5;
+  pointer-events: none;
+  position: absolute;
+  right: -70px;
+}
+
+.decoAccent {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.decoSand {
+  stroke: var(--sand);
+  stroke-width: 1;
+}
+
+.decoBackground {
+  fill: var(--bg);
+}
+
+.decoAccentFill {
+  fill: var(--accent);
+}
+
+.main {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  padding: 48px 30px;
+}
+
+.card {
+  max-width: 400px;
+  width: 100%;
+}
+
+.tabs {
+  border: 1px solid var(--ink);
+  display: flex;
+  margin-bottom: 34px;
+}
+
+.tab {
+  color: var(--ink-soft);
+  flex: 1;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  padding: 12px;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.tabActive {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.note {
+  border-top: 1px solid var(--sand);
+  color: var(--ink-soft);
+  font-size: 12px;
+  margin: 22px 0 0;
+  padding-top: 16px;
+}
+
+@media (max-width: 860px) {
+  .wrap {
+    grid-template-columns: 1fr;
+  }
+
+  .aside {
+    min-height: 260px;
+    padding: 40px 30px;
+  }
+
+  .introduction {
+    margin-top: 36px;
+  }
+
+  .fine,
+  .foot {
+    display: none;
+  }
+}
