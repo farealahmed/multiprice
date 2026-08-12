@@ -4,7 +4,7 @@
 
 A take-home submission for a Full Stack role. The PDF (`docs/multi-rate-pricing-calculator.pdf`) is the only authority. The HTML in `design/htmls/` is illustration — it has no say over data models, policies, or scope, and where it disagrees with the PDF, it is wrong and gets changed.
 
-**Deliverables:** source code, a live URL (deployment already handled), and a README covering setup, rounding policy with a worked example, immutability rules, assumptions, and what you'd improve.
+**Deliverables:** source code, a live URL (deployed by lane `6-E`), and a README covering setup, rounding policy with a worked example, immutability rules, assumptions, and what you'd improve.
 
 **It is judged on seven things.** Nothing in this plan may compromise them, and anything not serving them is optional:
 
@@ -30,6 +30,16 @@ A take-home submission for a Full Stack role. The PDF (`docs/multi-rate-pricing-
 | 6. REST API, CRUD, validation with specific messages | 3, 4 |
 | Stretch: duplicate, finalize validation, printable view | 4, 4, 6 |
 
+## How this gets executed
+
+Each phase below is decomposed into lanes that can run **simultaneously, in separate terminals**, in `docs/phases/phase-N.md`. Every phase runs as **gate → lanes → join**: one short serial task freezes the contract on both sides, two to four lanes then build against it in parallel over disjoint files, and a join proves them against each other.
+
+- `docs/parallel-execution.md` — the rules that let N agents share one checkout, the file-ownership map, and the wave schedule.
+- `docs/phases/phase-0.md` … `phase-6.md` — a self-contained brief per lane: mission, owned files, build steps, tests, and the command that says it is done.
+- `.claude/agents/` — the four roles the lanes are written for.
+
+The phases, their ordering, and the decisions below are unchanged by that decomposition.
+
 ## Two rules that produce this plan
 
 **1. The contract is the unit of work, not the layer.** Each phase opens by defining the endpoint schemas in the backend and the small set of response types needed by the frontend client. The two apps stay independent — no shared package, generated client, or contract-synchronization system. Those solve long-term drift that this take-home does not have.
@@ -52,7 +62,7 @@ Made on the PDF's terms. It says: *"If anything is ambiguous, make a reasonable 
 |---|---|---|
 | Money storage | Integer **cents** | PDF: "avoid floating-point drift". No float reaches the domain. |
 | Money on the wire | JSON numbers in major units | Reject >2 dp at the schema instead of adding a string-conversion layer. |
-| Quantity | Decimal to 3 dp, represented internally as scaled integers | PDF types it *Number (≥ 1)*. Integer-only would silently narrow the spec. Scaling stays behind conversion helpers. |
+| Quantity | Decimal to 3 dp, **minimum 1**, represented internally as scaled integers | PDF types it *Number (≥ 1)* — both halves are binding: integer-only would narrow the spec, and `> 0` would widen it. Scaling stays behind conversion helpers. |
 | Percentages | Integer **basis points**, behind conversion helpers | Avoids floating-point drift without leaking the storage representation through the domain. |
 | Rounding | Half-up **away from zero**, 2 dp per line; document totals sum rounded lines | Precise even though the domain rejects negative inputs. Use one explicit helper rather than relying on JavaScript's rounding behavior. |
 | **Fixed discount > line subtotal** | **Reject**, code `DISCOUNT_EXCEEDS_SUBTOTAL` | PDF allows reject or clamp. Rejecting produces a specific error message, which is a scored row; clamping silently rewrites user input and produces nothing to grade. |
@@ -66,7 +76,9 @@ Made on the PDF's terms. It says: *"If anything is ambiguous, make a reasonable 
 ```
 apps/backend/         Fastify. Owns the zod schemas. src/pricing imports nothing.
 apps/frontend/        Next.js App Router. Own package.json, own types, own Dockerfile.
-infra/compose.yml     mongo · backend · frontend
+compose.yml           mongo · backend · frontend — at the root, so a bare
+                      `docker compose up` works on a clean clone
+compose.dev.yml       mongo only, for host-process development
 ```
 
 Two independent projects sharing nothing but the HTTP contract. This makes the API boundary visible without introducing a workspace, shared package, or generated client.
@@ -87,6 +99,8 @@ Tests follow risk rather than forcing every feature through the same ladder:
 
 ## Phase 0 — Skeleton
 
+**Lanes** [`docs/phases/phase-0.md`](phases/phase-0.md) — G0 conventions · 0-A backend runtime · 0-B frontend shell · 0-C infra & E2E · J0
+
 Serves no evaluation row directly; makes every later phase demonstrable.
 
 **Contract** Health response — trivial on purpose. It establishes the pattern: schema in the backend, mirrored type in the frontend's API client, one browser flow proving both.
@@ -104,6 +118,8 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 ---
 
 ## Phase 1 — Calculation engine and live editor
+
+**Lanes** [`docs/phases/phase-1.md`](phases/phase-1.md) — G1 pricing contract · 1-A engine · 1-B preview route · 1-C editor UI · J1
 
 **Retires: Correctness, Calculation design, Tests — three of seven.** No database, deliberately.
 
@@ -127,6 +143,8 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 ## Phase 2 — Authentication and ownership
 
+**Lanes** [`docs/phases/phase-2.md`](phases/phase-2.md) — G2 auth contract & persistence · 2-A backend auth · 2-B frontend auth · J2
+
 **Requirement 1.** "Each user must only see and modify their own data."
 
 **Contract** Signup, login, session user.
@@ -142,6 +160,8 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 ---
 
 ## Phase 3 — Documents, line items, validation
+
+**Lanes** [`docs/phases/phase-3.md`](phases/phase-3.md) — G3 document contract · 3-A CRUD · 3-B validation & isolation tests · 3-C list UI · 3-D editor persistence · J3
 
 **Requirements 2 and 6. Retires: Validation.**
 
@@ -159,11 +179,13 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 ## Phase 4 — Lifecycle and immutability
 
+**Lanes** [`docs/phases/phase-4.md`](phases/phase-4.md) — G4 lifecycle contract · 4-A finalize & guard · 4-B immutability tests · 4-C lock UI · J4 · 4-D duplicate
+
 **Requirement 4. Retires: Lifecycle.** Duplicate (stretch 1) lives here too — last in the phase, and only once the required flow is green. It reuses the create and finalize paths, so building it while that context is loaded is cheaper than revisiting it in Phase 6.
 
-**Contract** Finalize response and the `document_finalized` error. Add the duplicate response only if that stretch endpoint is implemented.
+**Contract** Finalize response and the `DOCUMENT_FINALIZED` error. Add the duplicate response only if that stretch endpoint is implemented.
 
-**Backend** `POST /documents/:id/finalize`, defensively reusing the normal document validator rather than creating a separate validation subsystem. Every mutating route rejects a finalized document with **409 `document_finalized`** and a clear message. If the required flow is complete, `POST /documents/:id/duplicate` returns a new draft with fresh ids and recomputed totals.
+**Backend** `POST /documents/:id/finalize`, defensively reusing the normal document validator rather than creating a separate validation subsystem. Every mutating route rejects a finalized document with **409 `DOCUMENT_FINALIZED`** and a clear message. If the required flow is complete, `POST /documents/:id/duplicate` returns a new draft with fresh ids and recomputed totals.
 
 **Frontend** Finalize confirmation — it is irreversible. Read-only document view. A 409 from a stale tab surfaces clearly rather than failing silently. Add the duplicate action with its stretch endpoint.
 
@@ -178,6 +200,8 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 ---
 
 ## Phase 5 — Summary report
+
+**Lanes** [`docs/phases/phase-5.md`](phases/phase-5.md) — G5 report contract · 5-A aggregation · 5-B report UI · J5
 
 **Requirement 5. Retires: Reporting.**
 
@@ -194,6 +218,8 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 ---
 
 ## Phase 6 — README and submission
+
+**Lanes** [`docs/phases/phase-6.md`](phases/phase-6.md) — 6-A1/6-A2 README · 6-E deployment · 6-B seed · 6-C quality pass · J6 · 6-D printable view · J7
 
 **Retires: Communication** — the row most often lost by people whose code was fine.
 

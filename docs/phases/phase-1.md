@@ -1,0 +1,164 @@
+# Phase 1 — Calculation engine and live editor (lane briefs)
+
+Plan context: `docs/implementation-phases.md` § Phase 1. Rules: `docs/parallel-execution.md`.
+**Retires: Correctness, Calculation design, Tests — three of the seven scored rows.** No database, deliberately.
+
+```
+G1 ──► 1-A engine ──┐
+                    ├─► 1-B preview route ─┐
+                    └─► 1-C editor UI ─────┴─► J1
+```
+
+`G1` runs in wave 1 alongside Phase 0's lanes; `1-A` and `1-C` follow in wave 2. The engine imports nothing and does not wait for a server.
+
+`1-B` is deliberately **not** parallel with `1-A` — it imports `src/pricing` directly, so it cannot typecheck until that module exists. It gets wave 3 to itself. A lane can be written blind against a *contract*; it cannot be written blind against another lane's *module*.
+
+---
+
+## Gate G1 — Pricing contract and fixtures
+
+**Agent** backend-engineer · **Depends on** G0 (conventions only) · **Blocks** 1-A, 1-B, 1-C
+
+**Mission** Fix the money/quantity/percent representations, the engine's function signatures, the preview endpoint's schemas, and the PDF's sample as executable fixtures — so the engine, the route, and the UI can be built at the same time by three agents who never speak.
+
+**Owns** `apps/backend/src/contracts/pricing.ts` (schemas **and** this domain's error codes), `apps/backend/test/fixtures/pdf-sample.ts`, `apps/frontend/src/lib/api/types/pricing.ts`, `docs/contracts/phase-1.md`
+
+**Build**
+1. Wire representations, per the plan's decisions table — these are what crosses HTTP:
+   ```ts
+   quantity:   number   // >= 1, max 3 dp, <= 1_000_000
+   unitPrice:  number   // >= 0, max 2 dp, <= 1_000_000, major units
+   discount:   { type: 'none' } | { type: 'percent'; value: number } | { type: 'fixed'; value: number }
+   taxPercent: number | null   // 0..100, absent and 0 are distinct on input, identical in effect
+   ```
+   The discriminated union makes "percent or fixed, not both" unrepresentable rather than runtime-checked.
+
+   **Quantity is `>= 1`, not `> 0`** — the PDF types it *Number (≥ 1)* and that is a mandatory bound, not a formatting note. Fractional quantities above one are allowed (2.5 hours); `0.999` is rejected with `QUANTITY_TOO_LOW`. The plan's decisions table addressed only whether quantity may be fractional and dropped the lower bound; it is restored here.
+
+   **The upper bounds are load-bearing, not decoration.** Internally quantity is thousandths and money is cents, so a line's raw product is `quantity × 1000 × unitPrice × 100`. At the caps above that is `10^9 × 10^8 = 10^17`, which exceeds `Number.MAX_SAFE_INTEGER` — so the caps must be low enough that it does not. Fix them at **quantity ≤ 1,000,000 and unitPrice ≤ 1,000,000.00**, giving a worst case near `10^14`, two orders of magnitude inside the safe range. Reject at the schema with `QUANTITY_TOO_LARGE` / `UNIT_PRICE_TOO_LARGE`. `bigint` would also solve this and is not worth its cost here — but unbounded numbers are not an option, and silent precision loss on a money calculation is the one failure this project cannot afford.
+2. Internal representations, declared here and never leaked past the engine's boundary: money as integer **cents**, quantity as integer **thousandths**, percentages as integer **basis points**.
+3. Engine signatures — frozen, so 1-B can call them before 1-A has written them:
+   ```ts
+   calculateLine(input: LineInput): LineResult
+   calculateDocument(inputs: LineInput[]): DocumentResult
+   type LineResult     = { subtotal, discountAmount, afterDiscount, taxAmount, total }        // all cents
+   type DocumentResult = { lines: LineResult[]; subtotal, totalDiscount, totalTax, grandTotal } // all cents
+   ```
+4. Error codes for this phase, exported from `contracts/pricing.ts` itself (G0's one-file-per-domain rule — there is no shared `codes.ts` to append to): `QUANTITY_TOO_LOW`, `QUANTITY_TOO_LARGE`, `UNIT_PRICE_NEGATIVE`, `UNIT_PRICE_TOO_LARGE`, `MONEY_PRECISION`, `QUANTITY_PRECISION`, `TAX_PERCENT_OUT_OF_RANGE`, `DISCOUNT_PERCENT_OUT_OF_RANGE`, `DISCOUNT_TYPE_CONFLICT`, `DISCOUNT_EXCEEDS_SUBTOTAL`. Phase 3 renders against this enum; it starts here.
+5. Request/response schemas for `POST /api/v1/pricing/preview`: `{ lines: LineInput[] }` in, `DocumentResult` in **major units** out. Cents are an internal representation; they do not cross the wire.
+6. `test/fixtures/pdf-sample.ts` — the PDF's three lines and every expected number, as data:
+   | Line | Qty | Unit price | Discount | Tax | → subtotal / discount / after / tax / **total** |
+   |---|---|---|---|---|---|
+   | Widget A | 2 | 100.00 | 10% | 5% | 200.00 / 20.00 / 180.00 / 9.00 / **189.00** |
+   | Widget B | 1 | 50.00 | — | 5% | 50.00 / 0.00 / 50.00 / 2.50 / **52.50** |
+   | Service fee | 1 | 200.00 | $20 fixed | — | 200.00 / 20.00 / 180.00 / 0.00 / **180.00** |
+
+   Document: subtotal **450.00**, discount **40.00**, tax **11.50**, grand total **421.50**.
+
+   1-A, 1-B and J1 all assert against this one file. Nobody retypes these numbers.
+7. Mirror `LineInput`, `LineResult`, `DocumentResult` and the code enum into `apps/frontend/src/lib/api/types/pricing.ts`.
+8. `docs/contracts/phase-1.md`: the endpoint, the schemas, the rounding policy in one paragraph, and the sample table above. The README in Phase 6 is written from this.
+
+**Rounding policy — state it here, verbatim, once:** half-up away from zero, applied to **2 decimal places per line** at **four** points in order — the line **subtotal** (`quantity × unitPrice`, which a fractional quantity can push past two decimals), then the discount amount, then the after-discount amount, then the tax amount. The line total is the sum of already-rounded parts; document totals are sums of already-rounded line figures.
+
+The subtotal rounding is easy to forget and produces a one-cent discrepancy only for fractional quantities — exactly the case a reviewer checking your rounding claim would construct. `2.5 × 10.01 = 25.025` rounds to `25.03` before anything else happens. Discount before tax; tax applies to the **discounted** amount.
+
+**Done when** both apps typecheck and `docs/contracts/phase-1.md` carries the sample table.
+
+**Guardrails** No implementation — signatures and schemas only. Do not write `src/pricing/*.ts` beyond type declarations; 1-A owns that directory.
+
+---
+
+## Lane 1-A — Pricing engine
+
+**Agent** backend-engineer · **Depends on** G1 only · **Parallel with** all of Phase 0
+
+**Mission** The single shared calculation module the PDF asks for, correct against its sample and defensible on rounding. This is the highest-value code in the repository.
+
+**Owns** `apps/backend/src/pricing/**` — including `units.ts`, `rounding.ts`, `calculate-line.ts`, `calculate-document.ts`, `index.ts`, and colocated `*.test.ts`
+
+**Reads, never edits** `apps/backend/src/contracts/pricing.ts`, `apps/backend/test/fixtures/pdf-sample.ts`
+
+**Build**
+1. **`src/pricing` imports nothing.** Not zod, not the logger, not the database, not a money library. It is pure functions over numbers. Anything it needs, it defines. Every later phase calls it; none reimplements any part of it.
+2. `units.ts` — conversion at the boundary: `toCents`, `fromCents`, `toThousandths`, `toBasisPoints` and their inverses. Rejects out-of-precision input rather than silently truncating. Nothing inside the engine sees a float after this layer.
+3. `rounding.ts` — one explicit `roundHalfUp(value: number): number` over integer arithmetic. Do not rely on `Math.round` (half-up toward +∞, wrong for the policy as stated) or `toFixed` (binary floating-point representation, wrong intermittently). One helper, used everywhere, documented at the top with the policy sentence from G1.
+4. `calculateLine` — subtotal = quantity × unit price → apply discount (percent of subtotal, or fixed amount) → round → apply tax percent to the **discounted** amount → round → total = discounted + tax. Order is scored: discount before tax, tax on the discounted amount.
+5. Fixed discount exceeding the line subtotal **throws** `DISCOUNT_EXCEEDS_SUBTOTAL` (plan decision — reject, not clamp). The engine throws a typed error carrying a code; it does not know about HTTP.
+6. `calculateDocument` — per-line results plus document subtotal (before discounts), total discount, total tax, grand total. Grand total is the sum of rounded line totals, and it must equal `subtotal − totalDiscount + totalTax`. **Assert that identity in a test**; the PDF derives 421.50 both ways.
+
+**Tests** (colocated, the phase's most important artifact)
+- The PDF sample line by line → `189.00 / 52.50 / 180.00`, then the document → `450.00 / 40.00 / 11.50 / 421.50`, all from the fixture file.
+- A case that discriminates the rounding policy: a line whose tax lands exactly on a half-cent, asserting half-up away from zero. Include the arithmetic in a comment — this test is the evidence behind the README's rounding section.
+- 100% discount; fixed discount exactly equal to subtotal (allowed, total 0); fixed over subtotal (throws).
+- Tax absent vs. tax `0` — same result, both covered, because the contract distinguishes them.
+- Quantity bounds: `0` rejected, `0.999` rejected (`QUANTITY_TOO_LOW`), `1` accepted, `1.5` and `2.5` accepted. The `0.999` case is the one that proves the PDF's `≥ 1` rather than a loose `> 0`.
+- Decimal quantity at 3 dp; a quantity requiring rounding at the subtotal (`2.5 × 10.01 → 25.03`), asserting the subtotal is rounded *before* the discount applies.
+- Boundary values: quantity at its minimum, unit price 0, tax at 0 and 100.
+- Floating-point traps: `0.1 + 0.2`-class inputs (e.g. qty 3 × 0.1), asserting exact cents.
+
+**Done when** `cd apps/backend && npx vitest run src/pricing` is green, and `grep -rE "^import|require\(" src/pricing` returns only imports of files inside `src/pricing` and the contract types.
+
+**Guardrails** No route, no Fastify, no zod, no database. Do not touch `src/api/**`.
+
+---
+
+## Lane 1-B — Preview endpoint
+
+**Agent** backend-engineer · **Depends on** G1, J0, **and 1-A having landed** · **Parallel with** nothing
+
+**Mission** A stateless `POST /api/v1/pricing/preview` that validates input against the contract and returns exactly what the engine computes.
+
+**Owns** `apps/backend/src/api/routes/pricing.ts`, `apps/backend/src/services/pricing-preview.ts`, `apps/backend/src/api/errors/engine-errors.ts`, `apps/backend/test/api/pricing-preview.test.ts`
+
+**Reads, never edits** `apps/backend/src/contracts/pricing.ts`, `apps/backend/src/pricing/**` (1-A's — call it, never edit it), `test/fixtures/pdf-sample.ts`
+
+**Build**
+1. Drop the route file into `src/api/routes/` — 0-A's autoloader registers it, and you must not edit `app.ts` to do it by hand. Use 0-A's error handler; do not add a second one.
+   **This lane runs after 1-A, not beside it**: you import `src/pricing` directly, so nothing here typechecks until that module exists. If it is missing, stop and report rather than stubbing it.
+2. Validate the request with the G1 schema. Rejections: money over 2 dp, quantity over 3 dp, quantity ≤ 0, negative unit price, percent outside 0–100, both discount types at once. Each carries its specific code from the enum and a `details[]` entry with the **field path** (`lines.1.taxPercent`). Phase 3's UI renders those paths; getting them right here means Phase 3 has nothing to fix.
+3. Convert major units → engine input, call `calculateDocument`, convert cents → major units on the way out. Conversion lives in the service, not the route, and not in the engine.
+4. Map the engine's thrown `DISCOUNT_EXCEEDS_SUBTOTAL` to a 400 with that code and the offending line's path — in **`src/api/errors/engine-errors.ts`**, which you own and 3-A will import. Phase 3 persists lines through the same engine and raises the same error; the mapping exists once, here, because 3-A cannot edit your files to share it later.
+5. Stateless: no database access, no session, no persistence. Phase 3 will persist; this endpoint never will.
+
+**Tests** — the PDF sample through HTTP returns exactly the fixture's numbers; a response that disagrees with `calculateDocument` called directly fails; one request per rejection above, asserting status, `code`, and `details[].path`.
+
+**Done when** `cd apps/backend && npx vitest run test/api/pricing-preview.test.ts` is green.
+
+**Guardrails** No arithmetic in this lane. If you find yourself writing `*` or `+` on money, it belongs in `src/pricing` — file an amendment instead.
+
+---
+
+## Lane 1-C — Line-item editor
+
+**Agent** frontend-engineer · **Depends on** G1, J0 · **Parallel with** 1-B
+
+**Mission** The editing surface from the mockup, computing nothing, rendering server output only.
+
+**Owns** `apps/frontend/src/app/(app)/editor/**`, `apps/frontend/src/components/line-items/**`, `apps/frontend/src/components/money/**`, `apps/frontend/src/lib/api/pricing.ts`, colocated `*.test.tsx`
+
+**Reads, never edits** `apps/frontend/src/lib/api/types/pricing.ts`, `apps/frontend/src/lib/api/client.ts` (0-B's), `design/htmls/document-edit.html`, `apps/frontend/src/styles/tokens.css`
+
+**Build**
+1. The line-item table from `design/htmls/document-edit.html`: description, quantity, unit price, discount, tax, line total; add row, remove row. Reuse 0-B's tokens; do not re-derive colors from the mockup.
+2. Discount input is a type-select (`none` / `percent` / `fixed`) plus a value input. The union in the contract is the reason a line cannot carry both — the UI should make that structurally impossible, not validate it after the fact.
+3. `lib/api/pricing.ts` — a typed `preview(lines)` call through 0-B's client. Debounce, and drop out-of-order responses (an older reply landing last is the classic way live totals go wrong).
+4. **Totals render server output only.** No multiplication, no summation, no optimistic display anywhere in the browser — the PDF states the client must not be the source of truth, and this is the lane where that is either honored or lost. While a request is in flight, show the previous server total in a pending state; never a locally computed guess.
+5. Render `ApiError.details[]` inline against the matching row and field, keyed by the path convention from 1-B. An unmatched path falls back to a document-level message rather than disappearing.
+6. Money display: the mockup's tabular numerals, 2 decimal places, one formatting helper in `components/money/`. No `toFixed` arithmetic — formatting only.
+7. One component test **only if** the discount-mode state proves non-trivial: switching type clears the stale value, and an invalid value keeps its inline error. Skip it if the component stays a thin controlled form; do not test static presentation.
+
+**Done when** `cd apps/frontend && npm test && npm run build` exits zero, and the editor renders the sample lines against a running backend.
+
+**Guardrails** No persistence, no save button, no document metadata — Phase 3. No `useMemo` that computes a total. Do not edit the shared client or types.
+
+---
+
+## Join J1
+
+1. Full backend suite plus frontend tests, green.
+2. `make up`, then write and run `e2e/pricing-preview.cy.ts`: enter the PDF's three sample lines in the editor and assert the total reads **421.50**, having come back from `/api/v1/pricing/preview`.
+3. Verify the browser network tab shows the totals arriving from the server — the scored claim is that the client is not the source of truth.
+4. Commit `chore(J1): join phase 1`.
+
+**Demo** Open the editor, enter the PDF's three sample lines, watch the totals resolve to its published numbers.

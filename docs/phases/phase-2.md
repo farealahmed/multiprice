@@ -1,0 +1,104 @@
+# Phase 2 — Authentication and ownership (lane briefs)
+
+Plan context: `docs/implementation-phases.md` § Phase 2. Rules: `docs/parallel-execution.md`.
+**Requirement 1.** "Each user must only see and modify their own data."
+
+```
+G2 ──► ┌─ 2-A backend auth ──┐
+       └─ 2-B frontend auth ─┴─► J2
+```
+
+`G2` runs in wave 2, during Phase 1's lanes. It carries the persistence foundation as well as the contract, because every repository written from Phase 3 onward inherits its ownership rule.
+
+---
+
+## Gate G2 — Auth contract and persistence foundation
+
+**Agent** backend-engineer · **Depends on** J0 · **Blocks** 2-A, 2-B, and every repository in the project
+
+**Mission** Fix the auth DTOs and session mechanics, and establish the repository pattern that makes an unscoped query impossible to write by accident.
+
+**Owns** `apps/backend/src/contracts/auth.ts` (schemas **and** this domain's error codes), `apps/backend/package.json` *(dependencies only — see G0's dependency-ownership rule)*, `apps/backend/src/persistence/repository.ts`, `apps/backend/src/api/plugins/indexes.ts`, `apps/backend/test/support/db.ts`, `apps/frontend/src/lib/api/types/auth.ts`, `docs/contracts/phase-2.md`
+
+**Build**
+1. DTOs: `SignupInput { email, password }`, `LoginInput { email, password }`, `SessionUser { id, email, createdAt }`. Password rules stated once, here: minimum 12 characters, no composition requirements, maximum length capped (argon2 has no practical limit, but an unbounded field is a free CPU-burn vector).
+2. Error codes, exported from `contracts/auth.ts` itself: `EMAIL_TAKEN`, `INVALID_CREDENTIALS`, `UNAUTHENTICATED`, `PASSWORD_TOO_SHORT`, `EMAIL_INVALID`. `INVALID_CREDENTIALS` is deliberately one code for both "no such user" and "wrong password" — a distinct code enumerates accounts.
+3. Add this phase's dependencies to `apps/backend/package.json`: `argon2`, `@fastify/cookie`, `@fastify/jwt`. No lane installs anything.
+4. Session mechanics, frozen: JWT in an **httpOnly, SameSite=Lax, Secure-in-production** cookie named by `COOKIE_NAME`; claims `{ sub, iat, exp }`, 7-day expiry; the token carries no email or role. Cookie only — no `Authorization` header path, no token in `localStorage`.
+5. **The ownership rule.** `persistence/repository.ts` states and enforces it:
+
+   > Every repository method that reads or writes user-owned data takes `ownerId` as its **first parameter**, and puts it in the Mongo filter. Never fetch-then-check.
+
+   Provide the base helper each collection repository builds on, so ownership scoping is inherited rather than remembered. An unscoped read is then visibly missing an argument — it fails to typecheck rather than leaking.
+6. `api/plugins/indexes.ts` — an **`fp`-wrapped autoloaded plugin** (G0's convention), so it actually runs at boot; a bare module in `persistence/` would have no caller, since `app.ts` belongs to 0-A and nobody may edit it. Idempotent index bootstrap: `users.email` unique, plus a hook for later collections. Uniqueness is a database constraint here, not an application check; the race between two concurrent signups is real and the index is what closes it.
+7. `test/support/db.ts` — the integration harness: connect to a test database, per-test isolation (drop or unique db name per file), teardown. Use Compose or Testcontainers, whichever stays simpler; integration tests from Phase 3 onward all use this file.
+8. Mirror `SessionUser` and the auth codes into `apps/frontend/src/lib/api/types/auth.ts`. Document in `docs/contracts/phase-2.md`: endpoints, cookie name and flags, the ownership rule, and the 404-not-403 convention that Phase 3 will test against.
+
+**Done when** both apps typecheck; `npx vitest run test/support` (a smoke test that the harness connects and cleans up) is green.
+
+**Guardrails** No routes, no argon2 calls, no UI. This lane defines the pattern; 2-A is the first user of it.
+
+---
+
+## Lane 2-A — Backend authentication
+
+**Agent** backend-engineer · **Depends on** G2, J1 · **Parallel with** 2-B
+
+**Mission** Signup, login, logout, and `me`, with a `userId` that every later route can rely on.
+
+**Owns** `apps/backend/src/api/routes/auth.ts`, `apps/backend/src/api/plugins/authenticate.ts`, `apps/backend/src/services/auth.ts`, `apps/backend/src/persistence/users.repository.ts`, `apps/backend/src/domain/user.ts`, `apps/backend/test/api/auth.test.ts`, `apps/backend/test/integration/users.test.ts`
+
+**Reads, never edits** `apps/backend/src/contracts/auth.ts`, `src/persistence/repository.ts`, `src/api/plugins/indexes.ts`, `test/support/db.ts`
+
+**Build**
+1. Route files go in `src/api/routes/` and autoload themselves — never edit `app.ts`. `users.repository.ts` on G2's base — `create`, `findByEmail`, `findById`. Store email lowercased and trimmed; the unique index is on the normalized value, or `A@x.com` and `a@x.com` become two accounts.
+2. argon2id hashing with library defaults (do not hand-tune memory/time costs). The hash never leaves the repository layer; no route response, no log line, no error message ever contains it.
+3. `POST /auth/signup` — validate, hash, insert. A duplicate key error from the index becomes `409 EMAIL_TAKEN`; the check is the index, not a prior `findByEmail` (which loses the race). Sets the session cookie and returns `SessionUser`.
+4. `POST /auth/login` — verify with argon2. Wrong password and unknown email both return `401 INVALID_CREDENTIALS`, and both do the same amount of work: verify against a dummy hash when the user is absent, so response timing does not enumerate accounts.
+5. `POST /auth/logout` — clears the cookie with the same attributes it was set with, or the browser keeps it.
+6. `GET /auth/me` — the current `SessionUser`, or `401 UNAUTHENTICATED`.
+7. `plugins/authenticate.ts` — a preHandler verifying the JWT and decorating `request.userId`. Failure is `401 UNAUTHENTICATED` through 0-A's error handler. Export it so every protected route in Phases 3–5 attaches the same one. Type `request.userId` as non-optional in protected route contexts, so a route that forgot the preHandler does not typecheck.
+
+**Tests**
+- Integration: a duplicate email is rejected **by the index** — insert twice at the repository level, bypassing the service, and assert the driver's duplicate key error. Also assert email normalization.
+- API: signup → cookie set → `me` returns the user; login with the right password succeeds; wrong password 401; unknown email 401 with the identical code and shape; `me` without a cookie 401; `me` with a tampered token 401; logout then `me` 401.
+
+**Done when** `cd apps/backend && npm test` is green with the test database running.
+
+**Guardrails** No document routes, no reset-password or email-verification flow (unstated requirement), no roles. Do not edit `repository.ts` — request an amendment if the base helper is insufficient.
+
+---
+
+## Lane 2-B — Frontend authentication
+
+**Agent** frontend-engineer · **Depends on** G2, J1 · **Parallel with** 2-A
+
+**Mission** Sign in, create account, protected routes, sign out — with server errors visible where they happened.
+
+**Owns** `apps/frontend/src/app/(auth)/**`, `apps/frontend/src/app/(app)/layout.tsx`, `apps/frontend/src/lib/auth/**` (context, hooks, guard), `apps/frontend/src/lib/api/auth.ts`, `apps/frontend/src/components/forms/**`, colocated `*.test.tsx`
+
+**Reads, never edits** `apps/frontend/src/lib/api/types/auth.ts`, `lib/api/client.ts`, `design/htmls/index.html`, `src/styles/tokens.css`
+
+**Build**
+1. Sign-in and create-account pages from `design/htmls/index.html` — the split layout with the brand aside. Both use the same form primitives in `components/forms/`; Phase 3's document forms reuse them, so build them as primitives, not page-local markup.
+2. `lib/api/auth.ts` — `signup`, `login`, `logout`, `me` through 0-B's client, always with credentials included.
+3. Auth context: session state, a `useSession()` hook, and hydration from `me` on mount. A pending state distinct from signed-out — rendering the sign-in page for half a second to an authenticated user is the flicker that makes this feel broken.
+4. Route protection over the `(app)` group: unauthenticated visitors are redirected to sign-in, with the attempted path preserved for post-login return.
+5. Client-side validation matching the contract (email shape, minimum 12 characters), and **server error display**: `EMAIL_TAKEN` attaches to the email field; `INVALID_CREDENTIALS` renders at form level, not on a field, because it deliberately does not say which one was wrong.
+6. Sign-out in the shell's user slot — 0-B left it empty for you. Calls logout, clears context, redirects.
+7. Component tests where behavior is real: the form renders a field-scoped `EMAIL_TAKEN`, and the guard redirects while pending resolves. Skip tests for purely presentational form states.
+
+**Done when** `cd apps/frontend && npm test && npm run build` exits zero.
+
+**Guardrails** Never read or write the session cookie from JavaScript — it is httpOnly and that is the point. No token in `localStorage`. No document or report pages.
+
+---
+
+## Join J2
+
+1. Both suites green; test database reachable.
+2. `make up`, then `e2e/auth.cy.ts`: sign up → land on the protected app → sign out → attempt the protected route directly → redirected to sign-in.
+3. Confirm in devtools that the session cookie is httpOnly and invisible to `document.cookie`.
+4. Commit `chore(J2): join phase 2`.
+
+**Demo** Register, get redirected in, sign out, fail to return without credentials.
