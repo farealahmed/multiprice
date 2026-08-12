@@ -32,10 +32,10 @@ A take-home submission for a Full Stack role. The PDF (`docs/multi-rate-pricing-
 
 ## How this gets executed
 
-Each phase below is decomposed into lanes that can run **simultaneously, in separate terminals**, in `docs/phases/phase-N.md`. Every phase runs as **gate → lanes → join**: one short serial task freezes the contract on both sides, two to four lanes then build against it in parallel over disjoint files, and a join proves them against each other.
+Each phase below is decomposed into lanes that can run **simultaneously, in separate terminals**, in `docs/phases/phase-N-issue-<N+1>.md`. Every phase runs as **gate → lanes → join**: one short serial task freezes the contract on both sides, two to four lanes then build against it in parallel over disjoint files, and a join proves them against each other.
 
 - `docs/parallel-execution.md` — the rules that let N agents share one checkout, the file-ownership map, and the wave schedule.
-- `docs/phases/phase-0.md` … `phase-6.md` — a self-contained brief per lane: mission, owned files, build steps, tests, and the command that says it is done.
+- `docs/phases/phase-0-issue-1.md` … `phase-6-issue-7.md` — a self-contained brief per lane: mission, owned files, build steps, tests, and the command that says it is done.
 - `.claude/agents/` — the four roles the lanes are written for.
 
 The phases, their ordering, and the decisions below are unchanged by that decomposition.
@@ -99,7 +99,7 @@ Tests follow risk rather than forcing every feature through the same ladder:
 
 ## Phase 0 — Skeleton
 
-**Lanes** [`docs/phases/phase-0.md`](phases/phase-0.md) — G0 conventions · 0-A backend runtime · 0-B frontend shell · 0-C infra & E2E · J0
+**Lanes** [`docs/phases/phase-0-issue-1.md`](phases/phase-0-issue-1.md) — G0 conventions · 0-A backend runtime · 0-B frontend shell · 0-C infra & E2E · J0
 
 Serves no evaluation row directly; makes every later phase demonstrable.
 
@@ -119,7 +119,7 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 ## Phase 1 — Calculation engine and live editor
 
-**Lanes** [`docs/phases/phase-1.md`](phases/phase-1.md) — G1 pricing contract · 1-A engine · 1-B preview route · 1-C editor UI · J1
+**Lanes** [`docs/phases/phase-1-issue-2.md`](phases/phase-1-issue-2.md) — G1 pricing contract · 1-A engine · 1-B preview route · 1-C editor UI · J1
 
 **Retires: Correctness, Calculation design, Tests — three of seven.** No database, deliberately.
 
@@ -143,7 +143,7 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 ## Phase 2 — Authentication and ownership
 
-**Lanes** [`docs/phases/phase-2.md`](phases/phase-2.md) — G2 auth contract & persistence · 2-A backend auth · 2-B frontend auth · J2
+**Lanes** [`docs/phases/phase-2-issue-3.md`](phases/phase-2-issue-3.md) — G2 auth contract & persistence · 2-A backend auth · 2-B frontend auth · J2
 
 **Requirement 1.** "Each user must only see and modify their own data."
 
@@ -161,7 +161,7 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 ## Phase 3 — Documents, line items, validation
 
-**Lanes** [`docs/phases/phase-3.md`](phases/phase-3.md) — G3 document contract · 3-A CRUD · 3-B validation & isolation tests · 3-C list UI · 3-D editor persistence · J3
+**Lanes** [`docs/phases/phase-3-issue-4.md`](phases/phase-3-issue-4.md) — G3 document contract · 3-A CRUD · 3-B validation & isolation tests · 3-C list UI · 3-D editor persistence · J3
 
 **Requirements 2 and 6. Retires: Validation.**
 
@@ -179,7 +179,7 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 ## Phase 4 — Lifecycle and immutability
 
-**Lanes** [`docs/phases/phase-4.md`](phases/phase-4.md) — G4 lifecycle contract · 4-A finalize & guard · 4-B immutability tests · 4-C lock UI · J4 · 4-D duplicate
+**Lanes** [`docs/phases/phase-4-issue-5.md`](phases/phase-4-issue-5.md) — G4 lifecycle contract · 4-A finalize & guard · 4-B immutability tests · 4-C lock UI · J4 · 4-D duplicate
 
 **Requirement 4. Retires: Lifecycle.** Duplicate (stretch 1) lives here too — last in the phase, and only once the required flow is green. It reuses the create and finalize paths, so building it while that context is loaded is cheaper than revisiting it in Phase 6.
 
@@ -201,7 +201,7 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 ## Phase 5 — Summary report
 
-**Lanes** [`docs/phases/phase-5.md`](phases/phase-5.md) — G5 report contract · 5-A aggregation · 5-B report UI · J5
+**Lanes** [`docs/phases/phase-5-issue-6.md`](phases/phase-5-issue-6.md) — G5 report contract · 5-A aggregation · 5-B report UI · J5
 
 **Requirement 5. Retires: Reporting.**
 
@@ -219,7 +219,7 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 ## Phase 6 — README and submission
 
-**Lanes** [`docs/phases/phase-6.md`](phases/phase-6.md) — 6-A1/6-A2 README · 6-E deployment · 6-B seed · 6-C quality pass · J6 · 6-D printable view · J7
+**Lanes** [`docs/phases/phase-6-issue-7.md`](phases/phase-6-issue-7.md) — 6-A1/6-A2 README · 6-E deployment · 6-B seed · 6-C quality pass · J6 · 6-D printable view · J7
 
 **Retires: Communication** — the row most often lost by people whose code was fine.
 

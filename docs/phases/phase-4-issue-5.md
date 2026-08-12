@@ -1,5 +1,7 @@
 # Phase 4 — Lifecycle and immutability (lane briefs)
 
+GitHub issue: #5
+
 Plan context: `docs/implementation-phases.md` § Phase 4. Rules: `docs/parallel-execution.md`.
 **Requirement 4. Retires: Lifecycle.**
 

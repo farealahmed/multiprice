@@ -1,5 +1,7 @@
 # Phase 6 — README and submission (lane briefs)
 
+GitHub issue: #7
+
 Plan context: `docs/implementation-phases.md` § Phase 6. Rules: `docs/parallel-execution.md`.
 **Retires: Communication** — the row most often lost by people whose code was fine.
 

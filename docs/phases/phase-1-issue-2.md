@@ -1,5 +1,7 @@
 # Phase 1 — Calculation engine and live editor (lane briefs)
 
+GitHub issue: #2
+
 Plan context: `docs/implementation-phases.md` § Phase 1. Rules: `docs/parallel-execution.md`.
 **Retires: Correctness, Calculation design, Tests — three of the seven scored rows.** No database, deliberately.
 

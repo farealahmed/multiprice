@@ -120,7 +120,7 @@ You are Lane 3-A.
 Read, in order:
   docs/parallel-execution.md          (the rules — especially file ownership)
   docs/implementation-phases.md       (§Decisions and §Phase 3)
-  docs/phases/phase-3.md              (find "Lane 3-A" — that is your brief)
+  docs/phases/phase-3-issue-4.md      (find "Lane 3-A" — that is your brief)
   docs/contracts/phase-3.md           (the frozen contract you build against)
   docs/multi-rate-pricing-calculator.md  (the assignment itself, if you need it)
 
@@ -147,7 +147,7 @@ You are running Join J3.
 
 Read:
   docs/parallel-execution.md          (§Definition of done — every join)
-  docs/phases/phase-3.md              (the "Join J3" section — that is your checklist)
+  docs/phases/phase-3-issue-4.md      (the "Join J3" section — that is your checklist)
   docs/contracts/phase-3.md           (the authority when two lanes disagree)
   specs/lanes/3-*.md                  (what each lane reports, including its assumptions
                                        and anything it flagged for you)
@@ -178,23 +178,23 @@ Keep one dedicated terminal open for it. There are two ways to run, and they ans
 What you use while building. The database is containerized; both apps run on the host so a save is visible in a second.
 
 ```
-Terminal S1   make dev-db     # Mongo in Docker (compose.dev.yml), on 127.0.0.1:27017
-Terminal S2   make dev-api    # backend, tsx watch, http://localhost:3001
-Terminal S3   make dev-web    # frontend, next dev,  http://localhost:3000
+Terminal S1   npm run dev-db     # Mongo in Docker (compose.dev.yml), on 127.0.0.1:27017
+Terminal S2   npm run dev-api    # backend, tsx watch, http://localhost:3001
+Terminal S3   npm run dev-web    # frontend, next dev,  http://localhost:3000
 ```
 
-Open `localhost:3000`. The path is **browser → Next.js (3000) → Fastify (3001) → Mongo (27017)**. Every hop is inspectable: the browser's network tab for the first, `dev-api`'s request log for the second, `make db-shell` for the third.
+Open `localhost:3000`. The path is **browser → Next.js (3000) → Fastify (3001) → Mongo (27017)**. Every hop is inspectable: the browser's network tab for the first, `dev-api`'s request log for the second, `npm run db-shell` for the third.
 
-If three more terminals is too many, run `make dev-db` and start the two apps in the background of one terminal — but keep their output somewhere you can read it, because "the UI shows nothing" is nearly always a backend log line you did not see.
+If three more terminals is too many, run `npm run dev-db` and start the two apps in the background of one terminal — but keep their output somewhere you can read it, because "the UI shows nothing" is nearly always a backend log line you did not see.
 
 ### Demonstration — one command, everything containerized
 
 What a reviewer runs, and what every join verifies:
 
 ```
-make up        # mongo + backend + frontend, production images
-make seed      # from Phase 6 onward — demo user and the PDF's sample document
-make reset     # clean database, start over
+npm run up        # mongo + backend + frontend, production images
+npm run seed      # from Phase 6 onward — demo user and the PDF's sample document
+npm run reset     # clean database, start over
 ```
 
 Here Mongo publishes **no host port** — only the backend reaches it, over the compose network. That is deliberate: it is how the deployed stack behaves, and it is why `compose.dev.yml` exists separately for the development path. Both files sit at the repository root so that the bare `docker compose up` in the README works from a clean clone; Compose does not look inside `infra/`.
@@ -202,7 +202,7 @@ Here Mongo publishes **no host port** — only the backend reaches it, over the 
 ### Seeing the data
 
 ```
-make db-shell
+npm run db-shell
 > use multiprice
 > db.documents.find().pretty()
 > db.documents.findOne({}, { totals: 1, status: 1 })

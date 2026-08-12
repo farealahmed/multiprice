@@ -1,5 +1,7 @@
 # Phase 2 — Authentication and ownership (lane briefs)
 
+GitHub issue: #3
+
 Plan context: `docs/implementation-phases.md` § Phase 2. Rules: `docs/parallel-execution.md`.
 **Requirement 1.** "Each user must only see and modify their own data."
 

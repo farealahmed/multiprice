@@ -1,5 +1,7 @@
 # Phase 5 — Summary report (lane briefs)
 
+GitHub issue: #6
+
 Plan context: `docs/implementation-phases.md` § Phase 5. Rules: `docs/parallel-execution.md`.
 **Requirement 5. Retires: Reporting.** The criterion is verbatim: *summary totals match individual documents in range*.
 
