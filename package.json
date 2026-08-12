@@ -6,5 +6,22 @@
   "type": "module",
   "engines": {
     "node": ">=22"
+  },
+  "scripts": {
+    "up": "make up",
+    "down": "make down",
+    "logs": "make logs",
+    "reset": "make reset",
+    "dev-db": "make dev-db",
+    "dev-api": "make dev-api",
+    "dev-web": "make dev-web",
+    "db-shell": "make db-shell",
+    "test": "make test",
+    "e2e": "make e2e",
+    "cypress:verify": "cypress verify"
+  },
+  "devDependencies": {
+    "cypress": "^13.14.0",
+    "typescript": "^5.6.0"
   }
 }

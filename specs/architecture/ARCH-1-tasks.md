@@ -270,6 +270,7 @@ An App Router application carrying the mockups' visual system, with a typed `fet
 **Date:** 2026-08-12
 **Depends on:** T1
 **Parallel with:** T2, T3
+**Status:** Implemented and verified (T4 terminal checks passed; J0 pending T2/T3).
 
 ### Description
 

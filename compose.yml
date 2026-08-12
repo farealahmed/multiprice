@@ -1,0 +1,53 @@
+services:
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - multiprice
+
+  backend:
+    build:
+      context: ./apps/backend
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      PORT: "3001"
+      NODE_ENV: "production"
+      MONGO_URL: "mongodb://mongo:27017"
+      MONGO_DB: "multiprice"
+      BACKEND_ORIGIN: "http://backend:3001"
+      JWT_SECRET: "${JWT_SECRET:-}"
+      COOKIE_NAME: "${COOKIE_NAME:-mp_session}"
+    expose:
+      - "3001"
+    networks:
+      - multiprice
+
+  frontend:
+    build:
+      context: ./apps/frontend
+      args:
+        BACKEND_ORIGIN: "http://backend:3001"
+    depends_on:
+      - backend
+    environment:
+      PORT: "3000"
+      NODE_ENV: "production"
+    ports:
+      - "3000:3000"
+    networks:
+      - multiprice
+
+volumes:
+  mongo_data:
+
+networks:
+  multiprice:
