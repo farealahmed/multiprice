@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { DocumentTotals } from '@/components/line-items/DocumentTotals';
 import { LineItemsTable } from '@/components/line-items/LineItemsTable';
-import { mapPricingErrors, type MappedPricingErrors } from '@/components/line-items/error-mapping';
+import { mapApiError, type MappedPricingErrors } from '@/components/line-items/error-mapping';
 import { emptyRow, toLineInputs, type RowState } from '@/components/line-items/row-state';
 import { Topbar } from '@/components/shell/Topbar';
 import { ApiError } from '@/lib/api/client';
@@ -59,7 +59,7 @@ export default function EditorPage() {
         setPending(hasResult.current);
         setErrors(
           error instanceof ApiError
-            ? mapPricingErrors(error.details, rows.length)
+            ? mapApiError(error, rows.length)
             : {
                 rows: new Map(),
                 documentLevel: ['Totals could not be computed — is the backend running?'],

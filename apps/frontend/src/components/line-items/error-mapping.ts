@@ -1,4 +1,4 @@
-import type { ApiErrorDetail } from '@/lib/api/client';
+import type { ApiError, ApiErrorDetail } from '@/lib/api/client';
 
 /**
  * Field-keyed errors for one editor row. The server attaches a `path` like
@@ -57,4 +57,20 @@ export function mapPricingErrors(
   }
 
   return { rows, documentLevel };
+}
+
+/**
+ * Maps a caught `ApiError` to display state, the same way `mapPricingErrors`
+ * does — except an error with no `details` (e.g. the envelope's generic
+ * `INTERNAL_ERROR`, which never carries one) would otherwise map to an empty
+ * result and vanish from the UI entirely. When that happens, fall back to the
+ * error's own message as a single document-level entry so a rejection is
+ * never silently invisible.
+ */
+export function mapApiError(error: ApiError, rowCount: number): MappedPricingErrors {
+  const mapped = mapPricingErrors(error.details, rowCount);
+  if (mapped.rows.size === 0 && mapped.documentLevel.length === 0) {
+    return { ...mapped, documentLevel: [error.message] };
+  }
+  return mapped;
 }

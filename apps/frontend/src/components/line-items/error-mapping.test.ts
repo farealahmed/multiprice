@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapPricingErrors } from './error-mapping';
+import { ApiError } from '@/lib/api/client';
+
+import { mapApiError, mapPricingErrors } from './error-mapping';
 
 const detail = (path: string, message: string) => ({ path, code: 'X', message });
 
@@ -43,5 +45,26 @@ describe('mapPricingErrors', () => {
 
   it('maps empty details to empty errors', () => {
     expect(mapPricingErrors(undefined, 2)).toEqual({ rows: new Map(), documentLevel: [] });
+  });
+});
+
+describe('mapApiError', () => {
+  it('falls back to the error message when there are no details to map', () => {
+    const error = new ApiError('INTERNAL_ERROR', 'An unexpected error occurred.');
+
+    expect(mapApiError(error, 2)).toEqual({
+      rows: new Map(),
+      documentLevel: ['An unexpected error occurred.'],
+    });
+  });
+
+  it('prefers mapped details over the raw error message when details exist', () => {
+    const error = new ApiError('VALIDATION_FAILED', 'Validation failed.', [
+      detail('lines.0.quantity', 'Quantity must be at least 1.'),
+    ]);
+
+    const mapped = mapApiError(error, 2);
+    expect(mapped.rows.get(0)).toEqual({ quantity: 'Quantity must be at least 1.' });
+    expect(mapped.documentLevel).toEqual([]);
   });
 });

@@ -29,7 +29,7 @@ e.g. `lines.1.taxPercent`.
 |----|----|----|----|
 | `quantity` | `number` | ≥1, ≤3dp, ≤1,000,000 | `QUANTITY_TOO_LOW` / `QUANTITY_TOO_LARGE` / `QUANTITY_PRECISION` |
 | `unitPrice` | `number` | ≥0, ≤2dp, ≤1,000,000, major units | `UNIT_PRICE_NEGATIVE` / `UNIT_PRICE_TOO_LARGE` / `MONEY_PRECISION` |
-| `discount` | `Discount` | see below | `DISCOUNT_PERCENT_OUT_OF_RANGE`, `DISCOUNT_EXCEEDS_SUBTOTAL` |
+| `discount` | `Discount` | see below | `DISCOUNT_PERCENT_OUT_OF_RANGE`, `FIXED_DISCOUNT_NEGATIVE`, `DISCOUNT_EXCEEDS_SUBTOTAL` |
 | `taxPercent` | `number \| null` | 0–100; `null`/absent and `0` are distinct on input, identical in effect | `TAX_PERCENT_OUT_OF_RANGE` |
 
 ```ts
@@ -108,6 +108,7 @@ instead of zod's generic issue code):
 | `MONEY_PRECISION` | `unitPrice` has more than 2 decimal places |
 | `TAX_PERCENT_OUT_OF_RANGE` | `taxPercent` outside 0–100 |
 | `DISCOUNT_PERCENT_OUT_OF_RANGE` | percent discount `value` outside 0–100 |
+| `FIXED_DISCOUNT_NEGATIVE` | fixed discount `value < 0` |
 | `DISCOUNT_TYPE_CONFLICT` | reserved — not reachable through the current schema |
 | `DISCOUNT_EXCEEDS_SUBTOTAL` | fixed discount `value` exceeds the line's subtotal; raised by the engine, never clamped |
 

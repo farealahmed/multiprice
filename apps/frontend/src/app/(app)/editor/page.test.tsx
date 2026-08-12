@@ -176,6 +176,17 @@ describe('EditorPage', () => {
     expect(within(notice as HTMLElement).getByText('Tax percent must be 0–100.')).toBeInTheDocument();
   });
 
+  it('falls back to the error message when a server error carries no details', async () => {
+    previewMock.mockRejectedValue(new ApiError('INTERNAL_ERROR', 'An unexpected error occurred.'));
+    render(<EditorPage />);
+
+    fireEvent.change(screen.getByLabelText('Row 1 quantity'), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText('Row 1 unit price'), { target: { value: '10' } });
+
+    const notice = await screen.findByText('An unexpected error occurred.');
+    expect(notice).toBeInTheDocument();
+  });
+
   it('keeps the previous server totals visible and dimmed while a request is in flight', async () => {
     const first: DocumentResult = {
       lines: [{ subtotal: 200, discountAmount: 20, afterDiscount: 180, taxAmount: 9, total: 189 }],

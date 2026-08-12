@@ -83,6 +83,7 @@ describe('POST /api/v1/pricing/preview', () => {
     ['money precision', { unitPrice: 1.001 }, 'MONEY_PRECISION', 'lines.0.unitPrice'],
     ['tax percentage', { taxPercent: 100.01 }, 'TAX_PERCENT_OUT_OF_RANGE', 'lines.0.taxPercent'],
     ['discount percentage', { discount: { type: 'percent', value: 100.01 } }, 'DISCOUNT_PERCENT_OUT_OF_RANGE', 'lines.0.discount.value'],
+    ['negative fixed discount', { discount: { type: 'fixed', value: -0.01 } }, 'FIXED_DISCOUNT_NEGATIVE', 'lines.0.discount.value'],
   ])('rejects %s with a code and field path', async (_caseName, patch, code, path) => {
     const response = await app.inject({
       method: 'POST',

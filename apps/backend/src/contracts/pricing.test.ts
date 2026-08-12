@@ -10,6 +10,7 @@ import {
   UNIT_PRICE_TOO_LARGE,
   MONEY_PRECISION,
   DISCOUNT_PERCENT_OUT_OF_RANGE,
+  FIXED_DISCOUNT_NEGATIVE,
   TAX_PERCENT_OUT_OF_RANGE,
 } from './pricing.ts';
 
@@ -100,6 +101,12 @@ describe('lineInputSchema — discount and tax rejection', () => {
       expect(result.success).toBe(false);
       expect(domainCode(result)).toBe(DISCOUNT_PERCENT_OUT_OF_RANGE);
     }
+  });
+
+  it('rejects a negative fixed discount', () => {
+    const result = lineInputSchema.safeParse({ ...valid, discount: { type: 'fixed', value: -0.01 } });
+    expect(result.success).toBe(false);
+    expect(domainCode(result)).toBe(FIXED_DISCOUNT_NEGATIVE);
   });
 
   it('rejects out-of-range tax', () => {

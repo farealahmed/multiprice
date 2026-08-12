@@ -17,6 +17,7 @@ export const UNIT_PRICE_TOO_LARGE = 'UNIT_PRICE_TOO_LARGE' as const;
 export const MONEY_PRECISION = 'MONEY_PRECISION' as const;
 export const TAX_PERCENT_OUT_OF_RANGE = 'TAX_PERCENT_OUT_OF_RANGE' as const;
 export const DISCOUNT_PERCENT_OUT_OF_RANGE = 'DISCOUNT_PERCENT_OUT_OF_RANGE' as const;
+export const FIXED_DISCOUNT_NEGATIVE = 'FIXED_DISCOUNT_NEGATIVE' as const;
 /** Reserved: not reachable through `lineInputSchema` — the discriminated union
  * already makes "both discount types at once" unrepresentable on the wire. */
 export const DISCOUNT_TYPE_CONFLICT = 'DISCOUNT_TYPE_CONFLICT' as const;
@@ -32,6 +33,7 @@ export type PricingErrorCode =
   | typeof MONEY_PRECISION
   | typeof TAX_PERCENT_OUT_OF_RANGE
   | typeof DISCOUNT_PERCENT_OUT_OF_RANGE
+  | typeof FIXED_DISCOUNT_NEGATIVE
   | typeof DISCOUNT_TYPE_CONFLICT
   | typeof DISCOUNT_EXCEEDS_SUBTOTAL;
 
@@ -112,6 +114,15 @@ export const lineInputSchema = z
         path: ['discount', 'value'],
         params: { code: DISCOUNT_PERCENT_OUT_OF_RANGE },
         message: 'Discount percent must be between 0 and 100',
+      });
+    }
+
+    if (line.discount.type === 'fixed' && line.discount.value < 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['discount', 'value'],
+        params: { code: FIXED_DISCOUNT_NEGATIVE },
+        message: 'Fixed discount must not be negative',
       });
     }
 
