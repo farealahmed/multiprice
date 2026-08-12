@@ -830,7 +830,7 @@ _None — this task does not touch the shell; the nav entry is T6's job._
 
 ## Task T6: Join J1
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** checklist
 > **Effort:** s
 > **Priority:** high
