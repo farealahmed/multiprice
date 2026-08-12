@@ -14,10 +14,13 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   MONGO_URL: z.string().min(1),
   MONGO_DB: z.string().min(1),
-  // Phase 2: required at runtime; declared here so the env shape is stable.
-  // Empty string at boot is allowed — server won't start a session-cookie
-  // route in Phase 0 anyway, and Phase 2's session module will re-check.
-  JWT_SECRET: z.string().default(''),
+  // Phase 2: mandatory in every environment; an empty session secret must
+  // fail boot rather than make signed cookies forgeable. Also reject the
+  // documented .env.example placeholder itself — a known, public value is
+  // just as forgeable as an empty one if it's ever pasted in literally.
+  JWT_SECRET: z.string().min(1).refine((v) => v !== 'replace-with-a-generated-secret', {
+    message: 'JWT_SECRET must not be the .env.example placeholder value — generate a real secret',
+  }),
   COOKIE_NAME: z.string().default('mp_session'),
   BACKEND_ORIGIN: z.string().url().default('http://localhost:3001'),
 });

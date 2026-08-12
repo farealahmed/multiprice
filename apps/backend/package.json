@@ -11,6 +11,10 @@
   },
   "dependencies": {
     "@fastify/autoload": "^5.0.0",
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/jwt": "^9.0.4",
+    "@fastify/rate-limit": "^10.2.1",
+    "argon2": "^0.41.1",
     "fastify": "^5.0.0",
     "fastify-plugin": "^5.0.0",
     "mongodb": "^6.10.0",

@@ -1,5 +1,10 @@
 describe('pricing preview — editor', () => {
   it('computes the PDF sample totals from the server, not the client', () => {
+    // /editor now sits behind the (app) auth guard (Phase 2) — sign up a
+    // fresh user first so the session cookie is set before visiting it.
+    const email = `pricing-preview-${Date.now()}@example.com`;
+    cy.request('POST', '/auth/signup', { email, password: 'pricing-preview-password12' });
+
     cy.intercept('POST', '/api/v1/pricing/preview').as('preview');
     cy.visit('/editor');
 
