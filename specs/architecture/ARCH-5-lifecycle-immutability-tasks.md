@@ -235,7 +235,7 @@ concurrently or otherwise), so the caller never needs to re-read and retry (R11)
 
 ## Task T3: `services/lifecycle.ts` — finalize orchestration
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** tdd
 > **Effort:** m
 > **Priority:** critical
@@ -340,7 +340,7 @@ takes no totals argument (R23).
 
 ## Task T4: Immutability guard and boot check
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** tdd
 > **Effort:** l
 > **Priority:** critical
@@ -467,7 +467,7 @@ routes against `GUARDED_ROUTES`, failing boot loudly on a mismatch (R8), mirrori
 
 ## Task T5: Finalize route
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** test-after
 > **Effort:** s
 > **Priority:** critical
@@ -548,7 +548,7 @@ that file is frozen), `DocumentAlreadyFinalizedError` → 409 `DOCUMENT_FINALIZE
 
 ## Task T6: Immutability evidence suite
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** tdd
 > **Effort:** l
 > **Priority:** critical
