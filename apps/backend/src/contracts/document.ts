@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { lineInputSchema } from './pricing.ts';
+import { dateRangeQuerySchema } from './report.ts';
 
 /**
  * Document contract — schemas and error codes for `/api/v1/documents` and its
@@ -232,6 +233,16 @@ export const updateDocumentSchema = z.intersection(
 );
 
 export type UpdateDocumentInput = z.infer<typeof updateDocumentSchema>;
+
+/**
+ * Optional inclusive date range for `GET /api/v1/documents`.
+ *
+ * Reuses `contracts/report.ts`'s `dateRangeQuerySchema` so the list route and the
+ * report route can never drift on what "in range" means.
+ */
+export const documentListQuerySchema = dateRangeQuerySchema;
+
+export type DocumentListQuery = z.infer<typeof documentListQuerySchema>;
 
 /**
  * Every `DocumentErrorCode` member, listed once more as a value array. The
