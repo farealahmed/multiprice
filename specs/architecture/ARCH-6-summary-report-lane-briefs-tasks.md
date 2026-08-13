@@ -436,7 +436,7 @@ by the time this function runs, the route (T5) has already parsed the query thro
 
 ## Task T5: Routes — `reports.ts` (new) + `documents.ts` amendment
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** test-after (no colocated test file of its own — verified by T6's integration suite, mirrors ARCH-5's finalize-route task)
 > **Effort:** s
 > **Priority:** critical
