@@ -834,7 +834,7 @@ immutability client-side — every state shown here is a reflection of what the 
 
 ## Task T9: Join J4
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** checklist
 > **Effort:** m
 > **Priority:** critical

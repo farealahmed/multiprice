@@ -49,7 +49,7 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   await app.register(autoload, {
     dir: join(apiDir, 'routes'),
     forceESM: true,
-    ignorePattern: /registry\.ts$|.*\.test\.(ts|js)$/i,
+    ignorePattern: /registry\.(ts|js)$|.*\.test\.(ts|js)$/i,
   });
 
   return app;
