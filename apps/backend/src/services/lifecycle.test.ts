@@ -10,7 +10,7 @@ import {
 import { DocumentNotFoundError, toDocumentResponse } from './documents.ts';
 import { PricingPreviewError } from './pricing-preview.ts';
 import type { DocumentsRepository } from '../persistence/documents.repository.ts';
-import type { StoredDocument, StoredLineItem } from '../domain/document.ts';
+import type { StoredDocument, StoredLineItem, StoredTotals } from '../domain/document.ts';
 
 const OWNER_ID = 'owner-1';
 const OTHER_OWNER_ID = 'owner-2';
@@ -44,28 +44,45 @@ function makeValidLine(overrides: Partial<StoredLineItem> = {}): StoredLineItem 
   };
 }
 
+type FinalizeIfDraftCall = {
+  ownerId: string;
+  id: string;
+  expectedUpdatedAt: Date;
+  totals: StoredTotals;
+};
+
 function createFakeRepository({
   findByIdResult,
+  findByIdSequence,
   finalizeIfDraftResult,
+  finalizeIfDraftSequence,
 }: {
   findByIdResult?: StoredDocument | null;
+  findByIdSequence?: Array<StoredDocument | null>;
   finalizeIfDraftResult?: StoredDocument | null;
+  finalizeIfDraftSequence?: Array<StoredDocument | null>;
 } = {}): {
   repository: DocumentsRepository;
   calls: {
     findById: Array<{ ownerId: string; id: string }>;
-    finalizeIfDraft: Array<{ ownerId: string; id: string }>;
+    finalizeIfDraft: FinalizeIfDraftCall[];
   };
 } {
   const calls = {
     findById: [] as Array<{ ownerId: string; id: string }>,
-    finalizeIfDraft: [] as Array<{ ownerId: string; id: string }>,
+    finalizeIfDraft: [] as FinalizeIfDraftCall[],
   };
+
+  const findByIdQueue = findByIdSequence ? [...findByIdSequence] : undefined;
+  const finalizeQueue = finalizeIfDraftSequence ? [...finalizeIfDraftSequence] : undefined;
 
   const repository: DocumentsRepository = {
     list: vi.fn(),
     findById: async (ownerId, id) => {
       calls.findById.push({ ownerId, id });
+      if (findByIdQueue) {
+        return findByIdQueue.length > 0 ? findByIdQueue.shift()! : null;
+      }
       if (!findByIdResult) return null;
       if (findByIdResult.ownerId !== ownerId) return null;
       return findByIdResult;
@@ -73,8 +90,11 @@ function createFakeRepository({
     insert: vi.fn(),
     update: vi.fn(),
     remove: vi.fn(),
-    finalizeIfDraft: async (ownerId, id) => {
-      calls.finalizeIfDraft.push({ ownerId, id });
+    finalizeIfDraft: async (ownerId, id, expectedUpdatedAt, totals) => {
+      calls.finalizeIfDraft.push({ ownerId, id, expectedUpdatedAt, totals });
+      if (finalizeQueue) {
+        return finalizeQueue.length > 0 ? finalizeQueue.shift()! : null;
+      }
       return finalizeIfDraftResult ?? null;
     },
   };
@@ -158,23 +178,28 @@ describe('lifecycle service — finalizeDocument', () => {
 
     const result = await finalizeDocument({ ownerId: OWNER_ID, repository, id });
 
-    expect(calls.finalizeIfDraft).toEqual([{ ownerId: OWNER_ID, id }]);
+    expect(calls.finalizeIfDraft).toMatchObject([{ ownerId: OWNER_ID, id }]);
     expect(result.status).toBe('finalized');
     expect(result.id).toBe(id);
   });
 
-  it('reports the stored totals and never recomputes them during the finalize write', async () => {
-    const storedTotals = { subtotal: 500, totalDiscount: 0, totalTax: 0, grandTotal: 500 };
+  it('persists freshly recomputed totals in the finalize write, overwriting a stale stored total', async () => {
+    // Stored totals are deliberately stale (as if the line was edited without
+    // a save reaching this total) so the recomputed value can be told apart
+    // from a value that was merely passed through unchanged.
+    const staleTotals = { subtotal: 999_99, totalDiscount: 0, totalTax: 0, grandTotal: 999_99 };
+    const recomputedTotals = { subtotal: 500, totalDiscount: 0, totalTax: 0, grandTotal: 500 };
     const draft = makeStoredDocument({
       lines: [makeValidLine({ unitPrice: 500 })],
-      totals: storedTotals,
+      totals: staleTotals,
     });
     const postImage: StoredDocument = {
       ...draft,
       status: 'finalized',
+      totals: recomputedTotals,
       updatedAt: new Date(),
     };
-    const { repository } = createFakeRepository({
+    const { repository, calls } = createFakeRepository({
       findByIdResult: draft,
       finalizeIfDraftResult: postImage,
     });
@@ -185,6 +210,7 @@ describe('lifecycle service — finalizeDocument', () => {
       id: draft._id.toHexString(),
     });
 
+    expect(calls.finalizeIfDraft[0]!.totals).toEqual(recomputedTotals);
     expect(result.totals).toEqual({
       subtotal: 5,
       totalDiscount: 0,
@@ -193,10 +219,11 @@ describe('lifecycle service — finalizeDocument', () => {
     });
   });
 
-  it('throws DocumentAlreadyFinalizedError when finalizeIfDraft loses a concurrent race', async () => {
+  it('throws DocumentAlreadyFinalizedError when finalizeIfDraft loses a race against a concurrent finalize', async () => {
     const draft = makeStoredDocument();
+    const alreadyFinalized: StoredDocument = { ...draft, status: 'finalized' };
     const { repository, calls } = createFakeRepository({
-      findByIdResult: draft,
+      findByIdSequence: [draft, alreadyFinalized],
       finalizeIfDraftResult: null,
     });
     const id = draft._id.toHexString();
@@ -205,7 +232,44 @@ describe('lifecycle service — finalizeDocument', () => {
       finalizeDocument({ ownerId: OWNER_ID, repository, id }),
     ).rejects.toBeInstanceOf(DocumentAlreadyFinalizedError);
 
-    expect(calls.finalizeIfDraft).toEqual([{ ownerId: OWNER_ID, id }]);
+    // One validation read, one atomic-write attempt, one recheck read — no retry,
+    // since the recheck confirms the document is genuinely finalized.
+    expect(calls.findById).toHaveLength(2);
+    expect(calls.finalizeIfDraft).toHaveLength(1);
+  });
+
+  it('retries against the fresh revision when a concurrent draft mutation (not a finalize) changed updatedAt', async () => {
+    const v1 = makeStoredDocument({
+      lines: [makeValidLine({ unitPrice: 100 })],
+      totals: { subtotal: 100, totalDiscount: 0, totalTax: 0, grandTotal: 100 },
+    });
+    const v2: StoredDocument = {
+      ...v1,
+      lines: [makeValidLine({ unitPrice: 300 })],
+      totals: { subtotal: 300, totalDiscount: 0, totalTax: 0, grandTotal: 300 },
+      updatedAt: new Date('2026-08-13T01:00:00.000Z'),
+    };
+    const postImage: StoredDocument = { ...v2, status: 'finalized' };
+
+    const { repository, calls } = createFakeRepository({
+      // Validation read for attempt 1, recheck read after the lost race,
+      // validation read for attempt 2.
+      findByIdSequence: [v1, v2, v2],
+      finalizeIfDraftSequence: [null, postImage],
+    });
+
+    const result = await finalizeDocument({
+      ownerId: OWNER_ID,
+      repository,
+      id: v1._id.toHexString(),
+    });
+
+    expect(calls.finalizeIfDraft).toHaveLength(2);
+    expect(calls.finalizeIfDraft[0]!.expectedUpdatedAt).toEqual(v1.updatedAt);
+    expect(calls.finalizeIfDraft[0]!.totals).toEqual({ subtotal: 100, totalDiscount: 0, totalTax: 0, grandTotal: 100 });
+    expect(calls.finalizeIfDraft[1]!.expectedUpdatedAt).toEqual(v2.updatedAt);
+    expect(calls.finalizeIfDraft[1]!.totals).toEqual({ subtotal: 300, totalDiscount: 0, totalTax: 0, grandTotal: 300 });
+    expect(result.status).toBe('finalized');
   });
 
   it('maps the post-image with the same toDocumentResponse used by the documents service', async () => {

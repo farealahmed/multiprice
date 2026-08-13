@@ -256,6 +256,12 @@ export function DocumentEditor({ documentId, initialDocument, onFinalized }: Doc
   };
 
   const handleFinalize = async () => {
+    if (dirty) {
+      // Defensive: the finalize control is disabled while dirty, but this
+      // guards confirmation too in case the dialog is reached some other way.
+      setFinalizeError('Save your changes before finalizing.');
+      return;
+    }
     setFinalizeError(null);
     try {
       const finalized = await finalize(documentId);
@@ -411,7 +417,8 @@ export function DocumentEditor({ documentId, initialDocument, onFinalized }: Doc
             <div className={styles.buttonRow}>
               <button
                 className={styles.buttonPrimary}
-                disabled={saving}
+                disabled={saving || dirty}
+                title={dirty ? 'Save your changes before finalizing.' : undefined}
                 type="button"
                 onClick={() => setFinalizeOpen(true)}
               >
@@ -421,6 +428,11 @@ export function DocumentEditor({ documentId, initialDocument, onFinalized }: Doc
                 {saving ? 'Saving…' : 'Save draft'}
               </button>
             </div>
+            {dirty && (
+              <p className={styles.hint} role="note">
+                Save your changes before finalizing — finalizing locks the last saved version.
+              </p>
+            )}
           </div>
         </div>
 

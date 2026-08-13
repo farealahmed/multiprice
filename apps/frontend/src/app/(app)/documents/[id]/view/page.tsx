@@ -3,7 +3,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { DocumentView } from '@/components/lifecycle/DocumentView';
 import { Topbar } from '@/components/shell/Topbar';
@@ -21,18 +21,30 @@ export default function DocumentViewPage() {
     | { phase: 'error'; message: string }
   >({ phase: 'loading' });
 
+  // Tracks the id the most recently issued request is for, so a late response
+  // for a document the user has since navigated away from can't overwrite the
+  // state of the id now on screen.
+  const requestedIdRef = useRef<string | null>(null);
+
   const load = useCallback(() => {
+    const id = params.id;
+    requestedIdRef.current = id;
     setState({ phase: 'loading' });
-    get(params.id).then(
-      (document) => setState({ phase: 'ok', document }),
-      (error: unknown) =>
+    get(id).then(
+      (document) => {
+        if (requestedIdRef.current !== id) return;
+        setState({ phase: 'ok', document });
+      },
+      (error: unknown) => {
+        if (requestedIdRef.current !== id) return;
         setState({
           phase: 'error',
           message:
             error instanceof ApiError
               ? error.message
               : 'Document could not be loaded.',
-        }),
+        });
+      },
     );
   }, [params.id]);
 

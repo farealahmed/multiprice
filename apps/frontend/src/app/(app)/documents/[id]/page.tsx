@@ -3,7 +3,7 @@
 'use client';
 
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { DocumentEditor } from '@/components/document-editor/DocumentEditor';
 import { DocumentView } from '@/components/lifecycle/DocumentView';
@@ -23,18 +23,31 @@ export default function DocumentPage() {
     | { phase: 'error'; message: string }
   >({ phase: 'loading' });
 
+  // Tracks the id the most recently issued request is for. A response whose
+  // request no longer matches this ref is stale — e.g. the user navigated from
+  // document A to document B before A's fetch resolved — and must not
+  // overwrite the state of the id now on screen.
+  const requestedIdRef = useRef<string | null>(null);
+
   const load = useCallback(() => {
+    const id = params.id;
+    requestedIdRef.current = id;
     setState({ phase: 'loading' });
-    get(params.id).then(
-      (document) => setState({ phase: 'ok', document }),
-      (error: unknown) =>
+    get(id).then(
+      (document) => {
+        if (requestedIdRef.current !== id) return;
+        setState({ phase: 'ok', document });
+      },
+      (error: unknown) => {
+        if (requestedIdRef.current !== id) return;
         setState({
           phase: 'error',
           message:
             error instanceof ApiError
               ? error.message
               : 'Document could not be loaded.',
-        }),
+        });
+      },
     );
   }, [params.id]);
 

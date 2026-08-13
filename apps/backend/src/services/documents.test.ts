@@ -77,13 +77,18 @@ function makeFakeRepo() {
     update: vi.fn(async (_ownerId: string, _id: string, _patch: UpdateInput | undefined) => {
       const key = new ObjectId(_id).toHexString();
       const existing = docs.get(key);
-      if (existing && _patch !== undefined) {
-        docs.set(key, { ...existing, ..._patch, updatedAt: new Date() } as StoredDocument);
-      }
+      if (!existing) return null;
+      const updated = { ...existing, ..._patch, updatedAt: new Date() } as StoredDocument;
+      docs.set(key, updated);
+      return updated;
     }),
-    remove: vi.fn(async (ownerId: string, id: string) => {
+    remove: vi.fn(async (_ownerId: string, id: string) => {
       const oid = new ObjectId(id);
-      docs.delete(oid.toHexString());
+      const key = oid.toHexString();
+      const existing = docs.get(key);
+      if (!existing) return null;
+      docs.delete(key);
+      return existing;
     }),
     finalizeIfDraft: vi.fn(async () => null),
   };

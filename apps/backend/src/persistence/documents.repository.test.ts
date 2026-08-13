@@ -19,6 +19,9 @@ function createFakeCollection() {
     opts?: { returnDocument?: ReturnDocument },
   ) => Promise<StoredDocument | null>) | undefined;
 
+  const findOneAndDeleteResults: Array<StoredDocument | null> = [];
+  let findOneAndDeleteImpl: ((filter: Filter<StoredDocument>) => Promise<StoredDocument | null>) | undefined;
+
   const createCursor = () => ({
     sort: (sortSpec: Sort) => {
       findSorts.push(sortSpec);
@@ -52,10 +55,18 @@ function createFakeCollection() {
       update: UpdateFilter<StoredDocument>,
       opts?: { returnDocument?: ReturnDocument },
     ) => {
+      updateCalls.push({ filter, update });
       if (findOneAndUpdateImpl) {
         return findOneAndUpdateImpl(filter, update, opts);
       }
       return findOneAndUpdateResults.shift() ?? null;
+    },
+    findOneAndDelete: async (filter: Filter<StoredDocument>) => {
+      deleteFilters.push(filter);
+      if (findOneAndDeleteImpl) {
+        return findOneAndDeleteImpl(filter);
+      }
+      return findOneAndDeleteResults.shift() ?? null;
     },
   } as unknown as Collection<StoredDocument>;
 
@@ -68,6 +79,7 @@ function createFakeCollection() {
     updateCalls,
     deleteFilters,
     findOneAndUpdateResults,
+    findOneAndDeleteResults,
     setFindOneAndUpdateImpl(
       fn: (
         filter: Filter<StoredDocument>,
@@ -76,6 +88,9 @@ function createFakeCollection() {
       ) => Promise<StoredDocument | null>,
     ) {
       findOneAndUpdateImpl = fn;
+    },
+    setFindOneAndDeleteImpl(fn: (filter: Filter<StoredDocument>) => Promise<StoredDocument | null>) {
+      findOneAndDeleteImpl = fn;
     },
   };
 }
@@ -149,23 +164,51 @@ describe('documents.repository', () => {
     expect(fake.insertedDocuments[0]).toMatchObject({ ownerId: 'owner-1' });
   });
 
-  it('update scopes to owner', async () => {
+  it('update scopes to owner and requires status: draft', async () => {
     const fake = createFakeCollection();
     const repository = createDocumentsRepository(createFakeDb(fake.collection));
     const id = new ObjectId().toHexString();
     await repository.update('owner-1', id, { title: 'Updated' });
     expect(fake.updateCalls).toHaveLength(1);
-    expect(fake.updateCalls[0]!.filter).toMatchObject({ _id: new ObjectId(id), ownerId: 'owner-1' });
+    expect(fake.updateCalls[0]!.filter).toMatchObject({
+      _id: new ObjectId(id),
+      ownerId: 'owner-1',
+      status: 'draft',
+    });
     expect(fake.updateCalls[0]!.update).toEqual({ $set: { title: 'Updated' } });
   });
 
-  it('remove scopes to owner', async () => {
+  it('update returns null when the conditional write finds no matching draft', async () => {
+    const fake = createFakeCollection();
+    const repository = createDocumentsRepository(createFakeDb(fake.collection));
+    fake.findOneAndUpdateResults.push(null);
+
+    const result = await repository.update('owner-1', new ObjectId().toHexString(), { title: 'Updated' });
+
+    expect(result).toBeNull();
+  });
+
+  it('remove scopes to owner and requires status: draft', async () => {
     const fake = createFakeCollection();
     const repository = createDocumentsRepository(createFakeDb(fake.collection));
     const id = new ObjectId().toHexString();
     await repository.remove('owner-1', id);
     expect(fake.deleteFilters).toHaveLength(1);
-    expect(fake.deleteFilters[0]).toMatchObject({ _id: new ObjectId(id), ownerId: 'owner-1' });
+    expect(fake.deleteFilters[0]).toMatchObject({
+      _id: new ObjectId(id),
+      ownerId: 'owner-1',
+      status: 'draft',
+    });
+  });
+
+  it('remove returns null when the conditional delete finds no matching draft', async () => {
+    const fake = createFakeCollection();
+    const repository = createDocumentsRepository(createFakeDb(fake.collection));
+    fake.findOneAndDeleteResults.push(null);
+
+    const result = await repository.remove('owner-1', new ObjectId().toHexString());
+
+    expect(result).toBeNull();
   });
 
   it('keeps independent owners scoped separately', async () => {
@@ -184,12 +227,15 @@ describe('documents.repository', () => {
   // finalizeIfDraft
   // ─────────────────────────────────────────────────────────────────────────────
 
-  it('finalizeIfDraft calls findOneAndUpdate with conditional filter, $set update, and returnDocument:after', async () => {
+  const STUB_TOTALS = { subtotal: 500, totalDiscount: 0, totalTax: 0, grandTotal: 500 };
+
+  it('finalizeIfDraft calls findOneAndUpdate with conditional+revision filter, $set update, and returnDocument:after', async () => {
     const fake = createFakeCollection();
     const repository = createDocumentsRepository(createFakeDb(fake.collection));
     const id = new ObjectId();
     const idHex = id.toHexString();
     const ownerId = 'owner-1';
+    const expectedUpdatedAt = new Date('2026-08-13T00:00:00.000Z');
 
     let capturedFilter: Filter<StoredDocument> | undefined;
     let capturedUpdate: UpdateFilter<StoredDocument> | undefined;
@@ -201,10 +247,17 @@ describe('documents.repository', () => {
       return Promise.resolve(null);
     });
 
-    await repository.finalizeIfDraft(ownerId, idHex);
+    await repository.finalizeIfDraft(ownerId, idHex, expectedUpdatedAt, STUB_TOTALS);
 
-    expect(capturedFilter).toMatchObject({ _id: id, ownerId, status: 'draft' });
-    expect(capturedUpdate).toEqual({ $set: { status: 'finalized', updatedAt: expect.any(Date) } });
+    expect(capturedFilter).toMatchObject({
+      _id: id,
+      ownerId,
+      status: 'draft',
+      updatedAt: expectedUpdatedAt,
+    });
+    expect(capturedUpdate).toEqual({
+      $set: { status: 'finalized', totals: STUB_TOTALS, updatedAt: expect.any(Date) },
+    });
     expect(capturedOpts).toEqual({ returnDocument: 'after' });
   });
 
@@ -220,13 +273,13 @@ describe('documents.repository', () => {
       issueDate: '2026-08-13',
       status: 'finalized',
       lines: [],
-      totals: { subtotal: 0, totalDiscount: 0, totalTax: 0, grandTotal: 0 },
+      totals: STUB_TOTALS,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
     fake.findOneAndUpdateResults.push(postImage);
 
-    const result = await repository.finalizeIfDraft('owner-1', idHex);
+    const result = await repository.finalizeIfDraft('owner-1', idHex, new Date(), STUB_TOTALS);
 
     expect(result).toEqual(postImage);
   });
@@ -236,7 +289,12 @@ describe('documents.repository', () => {
     const repository = createDocumentsRepository(createFakeDb(fake.collection));
     fake.findOneAndUpdateResults.push(null);
 
-    const result = await repository.finalizeIfDraft('owner-1', new ObjectId().toHexString());
+    const result = await repository.finalizeIfDraft(
+      'owner-1',
+      new ObjectId().toHexString(),
+      new Date(),
+      STUB_TOTALS,
+    );
 
     expect(result).toBeNull();
   });
@@ -246,7 +304,29 @@ describe('documents.repository', () => {
     const repository = createDocumentsRepository(createFakeDb(fake.collection));
     fake.findOneAndUpdateResults.push(null);
 
-    const result = await repository.finalizeIfDraft('wrong-owner', new ObjectId().toHexString());
+    const result = await repository.finalizeIfDraft(
+      'wrong-owner',
+      new ObjectId().toHexString(),
+      new Date(),
+      STUB_TOTALS,
+    );
+
+    expect(result).toBeNull();
+  });
+
+  it('finalizeIfDraft returns null when a concurrent draft mutation changed updatedAt since validation', async () => {
+    const fake = createFakeCollection();
+    const repository = createDocumentsRepository(createFakeDb(fake.collection));
+    // The real filter (validated by the "conditional+revision filter" test above)
+    // includes updatedAt, so a stale expectedUpdatedAt simply finds no match.
+    fake.findOneAndUpdateResults.push(null);
+
+    const result = await repository.finalizeIfDraft(
+      'owner-1',
+      new ObjectId().toHexString(),
+      new Date('2020-01-01T00:00:00.000Z'),
+      STUB_TOTALS,
+    );
 
     expect(result).toBeNull();
   });
@@ -255,7 +335,7 @@ describe('documents.repository', () => {
     const fake = createFakeCollection();
     const repository = createDocumentsRepository(createFakeDb(fake.collection));
 
-    const result = await repository.finalizeIfDraft('owner-1', 'not-a-valid-object-id');
+    const result = await repository.finalizeIfDraft('owner-1', 'not-a-valid-object-id', new Date(), STUB_TOTALS);
 
     expect(result).toBeNull();
     expect(fake.findOneAndUpdateResults).toHaveLength(0);
@@ -266,6 +346,7 @@ describe('documents.repository', () => {
     const repository = createDocumentsRepository(createFakeDb(fake.collection));
     const idHex = new ObjectId().toHexString();
     const ownerId = 'owner-1';
+    const expectedUpdatedAt = new Date('2026-08-13T00:00:00.000Z');
     const postImage: StoredDocument = {
       _id: new ObjectId(idHex),
       ownerId,
@@ -274,7 +355,7 @@ describe('documents.repository', () => {
       issueDate: '2026-08-13',
       status: 'finalized',
       lines: [],
-      totals: { subtotal: 0, totalDiscount: 0, totalTax: 0, grandTotal: 0 },
+      totals: STUB_TOTALS,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -283,8 +364,8 @@ describe('documents.repository', () => {
     fake.findOneAndUpdateResults.push(null);
 
     const [result1, result2] = await Promise.all([
-      repository.finalizeIfDraft(ownerId, idHex),
-      repository.finalizeIfDraft(ownerId, idHex),
+      repository.finalizeIfDraft(ownerId, idHex, expectedUpdatedAt, STUB_TOTALS),
+      repository.finalizeIfDraft(ownerId, idHex, expectedUpdatedAt, STUB_TOTALS),
     ]);
 
     expect([result1, result2]).toContain(postImage);

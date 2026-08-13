@@ -162,6 +162,28 @@ describe('DocumentEditor', () => {
     expect(confirm).not.toHaveBeenCalled();
   });
 
+  it('disables finalize while edits are unsaved, and re-enables it once saved', async () => {
+    render(<DocumentEditor documentId="document-1" />);
+    await screen.findByDisplayValue('Website redesign');
+
+    const finalizeButton = screen.getByRole('button', { name: 'Finalize document' });
+    expect(finalizeButton).not.toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'Changed title' } });
+    expect(finalizeButton).toBeDisabled();
+
+    // Disabled buttons don't fire click handlers in the DOM; confirm the
+    // dialog never opens and finalize is never called for a dirty document.
+    fireEvent.click(finalizeButton);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(finalizeMock).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(1));
+
+    expect(finalizeButton).not.toBeDisabled();
+  });
+
   it('opens the finalize dialog and calls finalize only on confirm', async () => {
     render(<DocumentEditor documentId="document-1" />);
     await screen.findByDisplayValue('Website redesign');
