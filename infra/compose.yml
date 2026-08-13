@@ -2,7 +2,8 @@ name: multiprice
 
 services:
   mongo:
-    image: mongo:7.0.28
+    # mongo:7.0.28
+    image: mongo@sha256:4510cf3d7050003e958745adb25d2deb3fb907430716162d9cc1a92eda2a6047
     volumes:
       - mongo_data:/data/db
     healthcheck:
@@ -25,7 +26,6 @@ services:
       NODE_ENV: "production"
       MONGO_URL: "mongodb://mongo:27017"
       MONGO_DB: "multiprice"
-      BACKEND_ORIGIN: "http://backend:3001"
       JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set in infra/.env}"
       COOKIE_NAME: "${COOKIE_NAME:-mp_session}"
     networks:
@@ -49,7 +49,8 @@ services:
     restart: unless-stopped
 
   caddy:
-    image: caddy:2-alpine
+    # caddy:2.11.4-alpine
+    image: caddy@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4cf95ab7c14d58648
     ports:
       - "80:80"
       - "443:443"
