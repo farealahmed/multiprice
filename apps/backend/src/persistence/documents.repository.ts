@@ -1,9 +1,9 @@
-import { ObjectId, type Db, type Sort } from 'mongodb';
+import { ObjectId, type Db, type Filter, type Sort } from 'mongodb';
 import type { StoredDocument, StoredTotals } from '../domain/document.ts';
 import { createOwnedRepository } from './repository.ts';
 
 export interface DocumentsRepository {
-  list(ownerId: string): Promise<StoredDocument[]>;
+  list(ownerId: string, range?: { from?: string; to?: string }): Promise<StoredDocument[]>;
   findById(ownerId: string, id: string): Promise<StoredDocument | null>;
   insert(ownerId: string, document: Omit<StoredDocument, '_id' | 'ownerId'>): Promise<{ insertedId: ObjectId }>;
   /**
@@ -49,15 +49,31 @@ export interface DocumentsRepository {
 
 const LIST_SORT: Sort = { issueDate: -1, createdAt: -1 };
 
+export function buildIssueDateFilter(
+  range?: { from?: string; to?: string },
+): Filter<StoredDocument> {
+  if (!range?.from && !range?.to) {
+    return {};
+  }
+
+  return {
+    issueDate: {
+      ...(range.from ? { $gte: range.from } : {}),
+      ...(range.to ? { $lte: range.to } : {}),
+    },
+  };
+}
+
 type InsertDocument<T> = Omit<T, 'ownerId'>;
 
 export function createDocumentsRepository(db: Db): DocumentsRepository {
+
   const collection = db.collection<StoredDocument>('documents');
   const base = createOwnedRepository(collection);
 
   return {
-    list: async (ownerId) => {
-      const cursor = base.find(ownerId, {});
+    list: async (ownerId, range) => {
+      const cursor = base.find(ownerId, buildIssueDateFilter(range));
       return cursor.sort(LIST_SORT).toArray();
     },
 
