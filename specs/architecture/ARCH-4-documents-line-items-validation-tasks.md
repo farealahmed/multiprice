@@ -822,7 +822,7 @@ order.
 
 ## Task T10: Join J3
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** checklist
 > **Effort:** m
 > **Priority:** critical
