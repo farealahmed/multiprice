@@ -4,6 +4,7 @@ import {
   createDocumentSchema,
   updateDocumentSchema,
   documentSummarySchema,
+  documentListQuerySchema,
   DOCUMENT_NOT_FOUND,
 } from '../../contracts/document.ts';
 import { createDocumentsRepository } from '../../persistence/documents.repository.ts';
@@ -57,8 +58,9 @@ function mapDocumentEngineError(error: unknown): { error: { code: 'VALIDATION_FA
 
 const documentsRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
   app.get('/api/v1/documents', { preHandler: app.authenticate }, async (request, reply) => {
+    const query = documentListQuerySchema.parse(request.query);
     const repository = createDocumentsRepository(app.db);
-    const stored = await repository.list(request.userId!);
+    const stored = await repository.list(request.userId!, query);
     const summaries = stored.map((doc) =>
       documentSummarySchema.parse(toDocumentResponse(doc)),
     );
