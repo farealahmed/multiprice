@@ -98,8 +98,6 @@ export function DocumentView({ document }: DocumentViewProps) {
 
         <StatusBanner>
           <strong>Locked.</strong> Lines, amounts, and metadata cannot be edited.
-          Any write attempt is rejected by the API with{' '}
-          <strong>409 DOCUMENT_FINALIZED</strong>.
         </StatusBanner>
 
         <section className={styles.panel} aria-labelledby="details-heading">
