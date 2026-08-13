@@ -725,7 +725,7 @@ sees after signing in, so the empty state matters as much as the populated one.
 
 ## Task T9: Editor persistence UI
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** ui
 > **Effort:** l
 > **Priority:** high

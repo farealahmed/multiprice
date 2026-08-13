@@ -3,7 +3,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 
 import { Field } from '@/components/forms/Field';
 import { DocumentTotals } from '@/components/line-items/DocumentTotals';
@@ -216,7 +216,7 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
     }
   };
 
-  const confirmNavigation = (event: React.MouseEvent<HTMLAnchorElement>) => {
+  const confirmNavigation = (event: MouseEvent<HTMLAnchorElement>) => {
     if (dirty && !window.confirm('Discard unsaved changes?')) {
       event.preventDefault();
     }

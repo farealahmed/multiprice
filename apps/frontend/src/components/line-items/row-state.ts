@@ -1,11 +1,13 @@
 import type { Discount, LineInput } from '@/lib/api/types/pricing';
 
 /**
- * Local editor state for one row. `key` and `description` never cross the
- * wire (A7 — line identity is positional); numeric fields stay as raw input
- * strings so typing is never rewritten under the cursor.
+ * Local editor state for one row. `key` is local-only; `id`, when loaded from a
+ * document, is echoed back on save. Numeric fields stay as raw input strings
+ * so typing is never rewritten under the cursor.
  */
 export type RowState = {
+  /** Server-minted document-line identity; absent until a new row is saved. */
+  id?: string;
   key: string;
   description: string;
   quantity: string;

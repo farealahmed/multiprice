@@ -60,6 +60,7 @@ export function LineItemsTable({ rows, results, errors, pending, onChange, onRem
           <LineItemRow
             key={row.key}
             index={index}
+            lineId={row.id}
             row={row}
             result={results?.[index]}
             errors={errors?.get(index)}
