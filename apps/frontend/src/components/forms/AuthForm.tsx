@@ -46,7 +46,7 @@ function validate(email: string, password: string): FieldErrors {
 function destination(returnTo: string | null): string {
   return returnTo !== null && returnTo.startsWith('/') && !returnTo.startsWith('//')
     ? returnTo
-    : '/editor';
+    : '/documents';
 }
 
 export function AuthForm({ mode }: AuthFormProps) {

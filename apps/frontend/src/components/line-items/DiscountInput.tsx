@@ -10,6 +10,7 @@ type DiscountInputProps = {
   type: Discount['type'];
   value: string;
   error?: string;
+  disabled?: boolean;
   onTypeChange: (type: Discount['type']) => void;
   onValueChange: (value: string) => void;
 };
@@ -25,6 +26,7 @@ export function DiscountInput({
   type,
   value,
   error,
+  disabled,
   onTypeChange,
   onValueChange,
 }: DiscountInputProps) {
@@ -35,6 +37,7 @@ export function DiscountInput({
           aria-label={`${rowLabel} discount type`}
           className={styles.input}
           value={type}
+          disabled={disabled}
           onChange={(event) => onTypeChange(event.target.value as Discount['type'])}
         >
           <option value="none">— none —</option>
@@ -50,6 +53,7 @@ export function DiscountInput({
             max={type === 'percent' ? 100 : undefined}
             step="0.01"
             value={value}
+            disabled={disabled}
             onChange={(event) => onValueChange(event.target.value)}
           />
         )}

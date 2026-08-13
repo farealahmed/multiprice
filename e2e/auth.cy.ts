@@ -11,7 +11,7 @@ describe('auth — sign up, protected app, sign out, redirect', () => {
   const testEmail = `e2e-${Date.now()}@example.com`;
   const testPassword = 'correct-horse-battery-staple';
 
-  it('signs up, reaches the editor, signs out, and blocks direct access', () => {
+  it('signs up, reaches the app, signs out, and blocks direct access', () => {
     // The upstream session provider can leave a Strict-Mode double-mount
     // `me()` rejection uncaught in dev mode. The functional flow still
     // works; suppress only that specific error so the scored assertions run.
@@ -26,10 +26,10 @@ describe('auth — sign up, protected app, sign out, redirect', () => {
 
     // 1. Accessing a protected route while signed out preserves the attempted
     //    path so the user can be returned after signing in / signing up.
-    cy.visit('/editor');
+    cy.visit('/documents');
     cy.wait('@sessionCheck');
     cy.url().should('include', '/sign-in');
-    cy.url().should('include', 'returnTo=%2Feditor');
+    cy.url().should('include', 'returnTo=%2Fdocuments');
 
     // 2. Create an account. Intercept the signup request so we can inspect the
     //    Set-Cookie header for HttpOnly (R4, R20).
@@ -42,7 +42,7 @@ describe('auth — sign up, protected app, sign out, redirect', () => {
     cy.contains('button', 'Create account').click();
 
     // 3. After signup the user lands on the originally requested protected page.
-    cy.url().should('include', '/editor');
+    cy.url().should('include', '/documents');
 
     cy.wait('@signup').then((interception) => {
       const setCookie = interception.response?.headers['set-cookie'];
@@ -71,8 +71,8 @@ describe('auth — sign up, protected app, sign out, redirect', () => {
     });
 
     // 6. Directly accessing the protected route again redirects back to sign-in.
-    cy.visit('/editor');
+    cy.visit('/documents');
     cy.url().should('include', '/sign-in');
-    cy.url().should('include', 'returnTo=%2Feditor');
+    cy.url().should('include', 'returnTo=%2Fdocuments');
   });
 });

@@ -13,11 +13,12 @@ type LineItemsTableProps = {
   results?: LineResult[];
   errors?: Map<number, RowFieldErrors>;
   pending: boolean;
+  disabled?: boolean;
   onChange: (key: string, patch: Partial<RowState>) => void;
   onRemove: (key: string) => void;
 };
 
-export function LineItemsTable({ rows, results, errors, pending, onChange, onRemove }: LineItemsTableProps) {
+export function LineItemsTable({ rows, results, errors, pending, disabled, onChange, onRemove }: LineItemsTableProps) {
   return (
     <table className={styles.table}>
       <thead>
@@ -60,10 +61,12 @@ export function LineItemsTable({ rows, results, errors, pending, onChange, onRem
           <LineItemRow
             key={row.key}
             index={index}
+            lineId={row.id}
             row={row}
             result={results?.[index]}
             errors={errors?.get(index)}
             pending={pending}
+            disabled={disabled}
             onChange={onChange}
             onRemove={onRemove}
           />
