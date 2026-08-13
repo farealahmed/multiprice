@@ -7,6 +7,8 @@ import { useState } from 'react';
 
 import { SessionProvider, useSession } from '@/lib/auth/session-context';
 
+import styles from './UserSlot.module.css';
+
 function SessionControls() {
   const { status, user, signOut } = useSession();
   const router = useRouter();
@@ -27,9 +29,14 @@ function SessionControls() {
   };
 
   return (
-    <div>
-      <span>{user.email}</span>
-      <button disabled={signingOut} onClick={() => void handleSignOut()} type="button">
+    <div className={styles.wrap}>
+      <span className={styles.email}>{user.email}</span>
+      <button
+        className={styles.button}
+        disabled={signingOut}
+        onClick={() => void handleSignOut()}
+        type="button"
+      >
         {signingOut ? 'Signing out…' : 'Sign out'}
       </button>
     </div>
