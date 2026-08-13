@@ -28,6 +28,11 @@ import {
 } from '../support/factories.ts';
 import { pdfSampleLines, pdfSampleExpected } from '../fixtures/pdf-sample.ts';
 
+const pdfSampleDocumentLines = pdfSampleLines.map((line, index) => ({
+  ...line,
+  description: ['Widget A', 'Widget B', 'Service fee'][index]!,
+}));
+
 // ---------------------------------------------------------------------------
 // Guard
 // ---------------------------------------------------------------------------
@@ -131,7 +136,7 @@ async function seedDocument(
 ): Promise<DocSummary> {
   const payload: Record<string, unknown> = {
     ...buildCreatePayload({ issueDate }),
-    ...(withLines ? { lines: pdfSampleLines } : {}),
+    ...(withLines ? { lines: pdfSampleDocumentLines } : {}),
   };
 
   const res = await app.inject({
@@ -333,7 +338,7 @@ describe.skipIf(!mongoReachable)(
       // Use the pdf sample's grandTotal (42150 cents) plus a large offset for bob.
       const bobPayload: Record<string, unknown> = {
         ...buildCreatePayload({ issueDate: '2026-07-12' }),
-        lines: pdfSampleLines.map((line) => ({
+        lines: pdfSampleDocumentLines.map((line) => ({
           ...line,
           // Make bob's totals significantly larger so any leak is unmistakable.
           unitPrice: 9999,
