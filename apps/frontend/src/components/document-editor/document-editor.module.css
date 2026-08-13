@@ -38,6 +38,17 @@
   opacity: 0.65;
 }
 
+.buttonPrimary {
+  composes: button;
+  color: var(--bg);
+  background: var(--ink);
+}
+
+.buttonPrimary:hover:not(:disabled) {
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
+}
+
 .status {
   display: inline-block;
   border: 1px solid var(--sand);

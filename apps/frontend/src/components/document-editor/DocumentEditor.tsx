@@ -6,14 +6,17 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from 'react';
 
 import { Field } from '@/components/forms/Field';
+import { FinalizeDialog } from '@/components/lifecycle/FinalizeDialog';
 import { DocumentTotals } from '@/components/line-items/DocumentTotals';
 import { LineItemsTable } from '@/components/line-items/LineItemsTable';
 import { emptyRow, toLineInputs, type RowState } from '@/components/line-items/row-state';
 import { Topbar } from '@/components/shell/Topbar';
 import { ApiError } from '@/lib/api/client';
 import { get, update } from '@/lib/api/documents';
+import { finalize } from '@/lib/api/lifecycle';
 import { preview } from '@/lib/api/pricing';
 import type { DocumentResponse, DocumentTotals as PersistedTotals, LineItemInput } from '@/lib/api/types/document';
+import { DOCUMENT_FINALIZED } from '@/lib/api/types/lifecycle';
 import type { DocumentResult } from '@/lib/api/types/pricing';
 
 import { mapDocumentErrors, type DocumentEditorErrors } from './error-mapping';
@@ -55,7 +58,15 @@ function totalResult(source: TotalsSource, liveResult: DocumentResult | null): D
   return liveResult ?? undefined;
 }
 
-export function DocumentEditor({ documentId }: { documentId: string }) {
+type DocumentEditorProps = {
+  documentId: string;
+  /** If provided, the editor seeds from this document instead of re-fetching. */
+  initialDocument?: DocumentResponse;
+  /** Called when this document becomes finalized (successfully or via a 409 race). */
+  onFinalized?: (document?: DocumentResponse) => void;
+};
+
+export function DocumentEditor({ documentId, initialDocument, onFinalized }: DocumentEditorProps) {
   const nextKey = useRef(0);
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -71,6 +82,24 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
   const [previewPending, setPreviewPending] = useState(false);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [finalizeOpen, setFinalizeOpen] = useState(false);
+  const [finalizeError, setFinalizeError] = useState<string | null>(null);
+  const [staleFinalizedMessage, setStaleFinalizedMessage] = useState<string | null>(null);
+
+  const applyDocument = useCallback((document: DocumentResponse) => {
+    nextKey.current = document.lines.length;
+    setTitle(document.title);
+    setCustomer(document.customer);
+    setIssueDate(document.issueDate);
+    setStatus(document.status);
+    setRows(rowsFromDocument(document));
+    setLiveResult(null);
+    setTotalsSource({ kind: 'live' });
+    setErrors(null);
+    setDirty(false);
+    setLoaded(true);
+    setLoading(false);
+  }, []);
 
   const loadDocument = useCallback(() => {
     let active = true;
@@ -81,18 +110,7 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
         if (!active) {
           return;
         }
-        nextKey.current = document.lines.length;
-        setTitle(document.title);
-        setCustomer(document.customer);
-        setIssueDate(document.issueDate);
-        setStatus(document.status);
-        setRows(rowsFromDocument(document));
-        setLiveResult(null);
-        setTotalsSource({ kind: 'live' });
-        setErrors(null);
-        setDirty(false);
-        setLoaded(true);
-        setLoading(false);
+        applyDocument(document);
       },
       (error: unknown) => {
         if (!active) {
@@ -106,9 +124,15 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
     return () => {
       active = false;
     };
-  }, [documentId]);
+  }, [documentId, applyDocument]);
 
-  useEffect(() => loadDocument(), [loadDocument]);
+  useEffect(() => {
+    if (initialDocument) {
+      applyDocument(initialDocument);
+      return;
+    }
+    return loadDocument();
+  }, [applyDocument, initialDocument, loadDocument]);
 
   useEffect(() => {
     if (!loaded) {
@@ -194,6 +218,7 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
 
     setSaving(true);
     setErrors(null);
+    setStaleFinalizedMessage(null);
     try {
       const document = await update(documentId, { title, customer, issueDate, lines });
       setTitle(document.title);
@@ -206,6 +231,20 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
       setTotalsSource({ kind: 'persisted', totals: document.totals });
       setDirty(false);
     } catch (error: unknown) {
+      if (error instanceof ApiError && error.code === DOCUMENT_FINALIZED) {
+        // The document was finalized elsewhere while this tab was editing.
+        // Surface a clear message, then hand control back to the parent so it
+        // can switch to the read-only view without discarding the user's edits
+        // silently and without leaving the save spinner stuck.
+        setStaleFinalizedMessage(
+          'This document has been finalized in another session. Your unsaved changes were not saved. Switching to read-only view…',
+        );
+        setSaving(false);
+        window.setTimeout(() => {
+          onFinalized?.();
+        }, 1500);
+        return;
+      }
       setErrors(
         error instanceof ApiError
           ? mapDocumentErrors(error.details, rows.length, error.message)
@@ -213,6 +252,21 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleFinalize = async () => {
+    setFinalizeError(null);
+    try {
+      const finalized = await finalize(documentId);
+      setFinalizeOpen(false);
+      onFinalized?.(finalized);
+    } catch (error: unknown) {
+      setFinalizeError(
+        error instanceof ApiError
+          ? error.message
+          : 'Document could not be finalized.',
+      );
     }
   };
 
@@ -354,11 +408,42 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
           </div>
           <div className={styles.totals}>
             <DocumentTotals result={totalResult(totalsSource, liveResult)} pending={previewPending} note={note} />
-            <button className={styles.button} disabled={saving} type="button" onClick={save}>
-              {saving ? 'Saving…' : 'Save draft'}
-            </button>
+            <div className={styles.buttonRow}>
+              <button
+                className={styles.buttonPrimary}
+                disabled={saving}
+                type="button"
+                onClick={() => setFinalizeOpen(true)}
+              >
+                Finalize document
+              </button>
+              <button className={styles.button} disabled={saving} type="button" onClick={save}>
+                {saving ? 'Saving…' : 'Save draft'}
+              </button>
+            </div>
           </div>
         </div>
+
+        {staleFinalizedMessage !== null && (
+          <div className={styles.notice} role="alert" style={{ marginTop: 24 }}>
+            <span aria-hidden="true" className={styles.noticeSquare} />
+            <span>
+              <b className={styles.noticeMessage}>{staleFinalizedMessage}</b>
+            </span>
+          </div>
+        )}
+
+        {finalizeOpen && (
+          <FinalizeDialog
+            title={title}
+            error={finalizeError ?? undefined}
+            onConfirm={handleFinalize}
+            onCancel={() => {
+              setFinalizeOpen(false);
+              setFinalizeError(null);
+            }}
+          />
+        )}
       </main>
     </>
   );
