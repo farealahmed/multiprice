@@ -85,6 +85,7 @@ function makeFakeRepo() {
       const oid = new ObjectId(id);
       docs.delete(oid.toHexString());
     }),
+    finalizeIfDraft: vi.fn(async () => null),
   };
 
   return { repository, docs };
