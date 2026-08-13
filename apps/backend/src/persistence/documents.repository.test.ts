@@ -116,28 +116,28 @@ describe('documents.repository', () => {
   it('buildIssueDateFilter returns an empty filter for undefined', () => {
     expect(buildIssueDateFilter()).toEqual({});
   });
+
   it('buildIssueDateFilter returns an empty filter for an empty range', () => {
     expect(buildIssueDateFilter({})).toEqual({});
   });
+
   it('buildIssueDateFilter returns inclusive bounds for a full range', () => {
     expect(buildIssueDateFilter({ from: '2026-07-01', to: '2026-07-31' })).toEqual({
       issueDate: { $gte: '2026-07-01', $lte: '2026-07-31' },
     });
   });
+
   it('buildIssueDateFilter returns a lower bound for from only', () => {
     expect(buildIssueDateFilter({ from: '2026-07-01' })).toEqual({
       issueDate: { $gte: '2026-07-01' },
     });
   });
+
   it('buildIssueDateFilter returns an upper bound for to only', () => {
     expect(buildIssueDateFilter({ to: '2026-07-31' })).toEqual({
       issueDate: { $lte: '2026-07-31' },
     });
   });
-
-
-
-
 
   it('list scopes to ownerId', async () => {
     const fake = createFakeCollection();
@@ -145,6 +145,7 @@ describe('documents.repository', () => {
     await repository.list('owner-1');
     expect(fake.findFilters).toEqual([{ ownerId: 'owner-1' }]);
   });
+
   it('list merges owner scope and date range in one query', async () => {
     const fake = createFakeCollection();
     const repository = createDocumentsRepository(createFakeDb(fake.collection));
@@ -155,20 +156,19 @@ describe('documents.repository', () => {
     }]);
   });
 
-
   it('list sorts newest-first by issueDate then createdAt', async () => {
     const fake = createFakeCollection();
     const repository = createDocumentsRepository(createFakeDb(fake.collection));
     await repository.list('owner-1');
     expect(fake.findSorts).toEqual([{ issueDate: -1, createdAt: -1 }]);
   });
+
   it('list keeps newest-first sorting when filtered by range', async () => {
     const fake = createFakeCollection();
     const repository = createDocumentsRepository(createFakeDb(fake.collection));
     await repository.list('owner-1', { from: '2026-07-01', to: '2026-07-31' });
     expect(fake.findSorts).toEqual([{ issueDate: -1, createdAt: -1 }]);
   });
-
 
   it('findById filters {_id, ownerId} in one call', async () => {
     const fake = createFakeCollection();

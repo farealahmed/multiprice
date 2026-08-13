@@ -67,7 +67,6 @@ export function buildIssueDateFilter(
 type InsertDocument<T> = Omit<T, 'ownerId'>;
 
 export function createDocumentsRepository(db: Db): DocumentsRepository {
-
   const collection = db.collection<StoredDocument>('documents');
   const base = createOwnedRepository(collection);
 
