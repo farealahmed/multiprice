@@ -5,5 +5,4 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   { href: '/documents', label: 'Documents' },
-  { href: '/editor', label: 'Editor' },
 ];

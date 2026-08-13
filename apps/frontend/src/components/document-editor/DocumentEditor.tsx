@@ -283,6 +283,7 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
               label="Title"
               value={title}
               error={errors?.metadata.title}
+              disabled={saving}
               onChange={(event) => {
                 markDirty();
                 setTitle(event.target.value);
@@ -293,6 +294,7 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
               label="Customer"
               value={customer}
               error={errors?.metadata.customer}
+              disabled={saving}
               onChange={(event) => {
                 markDirty();
                 setCustomer(event.target.value);
@@ -304,6 +306,7 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
               type="date"
               value={issueDate}
               error={errors?.metadata.issueDate}
+              disabled={saving}
               onChange={(event) => {
                 markDirty();
                 setIssueDate(event.target.value);
@@ -321,11 +324,12 @@ export function DocumentEditor({ documentId }: { documentId: string }) {
           results={liveResult?.lines}
           errors={errors?.rows}
           pending={previewPending}
+          disabled={saving}
           onChange={updateRow}
           onRemove={removeRow}
         />
         <div className={styles.buttonRow}>
-          <button className={styles.buttonSmall} type="button" onClick={addRow}>
+          <button className={styles.buttonSmall} type="button" disabled={saving} onClick={addRow}>
             + Add line
           </button>
           <span className={styles.hint}>A fixed discount cannot exceed the line subtotal.</span>

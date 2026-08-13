@@ -18,11 +18,12 @@ type LineItemRowProps = {
   result?: LineResult;
   errors?: RowFieldErrors;
   pending: boolean;
+  disabled?: boolean;
   onChange: (key: string, patch: Partial<RowState>) => void;
   onRemove: (key: string) => void;
 };
 
-export function LineItemRow({ index, lineId, row, result, errors, pending, onChange, onRemove }: LineItemRowProps) {
+export function LineItemRow({ index, lineId, row, result, errors, pending, disabled, onChange, onRemove }: LineItemRowProps) {
   const patch = (value: Partial<RowState>) => onChange(row.key, value);
   const rowLabel = `Row ${index + 1}`;
 
@@ -44,6 +45,7 @@ export function LineItemRow({ index, lineId, row, result, errors, pending, onCha
           className={styles.input}
           type="text"
           value={row.description}
+          disabled={disabled}
           onChange={(event) => patch({ description: event.target.value })}
         />
         {errors?.row !== undefined && (
@@ -60,6 +62,7 @@ export function LineItemRow({ index, lineId, row, result, errors, pending, onCha
           min="1"
           step="0.001"
           value={row.quantity}
+          disabled={disabled}
           onChange={(event) => patch({ quantity: event.target.value })}
         />
         {errors?.quantity !== undefined && (
@@ -76,6 +79,7 @@ export function LineItemRow({ index, lineId, row, result, errors, pending, onCha
           min="0"
           step="0.01"
           value={row.unitPrice}
+          disabled={disabled}
           onChange={(event) => patch({ unitPrice: event.target.value })}
         />
         {errors?.unitPrice !== undefined && (
@@ -90,6 +94,7 @@ export function LineItemRow({ index, lineId, row, result, errors, pending, onCha
           type={row.discountType}
           value={row.discountValue}
           error={errors?.discount}
+          disabled={disabled}
           onTypeChange={(discountType) => patch({ discountType, discountValue: '' })}
           onValueChange={(discountValue) => patch({ discountValue })}
         />
@@ -103,6 +108,7 @@ export function LineItemRow({ index, lineId, row, result, errors, pending, onCha
           max="100"
           step="0.01"
           value={row.taxPercent}
+          disabled={disabled}
           onChange={(event) => patch({ taxPercent: event.target.value })}
         />
         {errors?.taxPercent !== undefined && (
@@ -120,6 +126,7 @@ export function LineItemRow({ index, lineId, row, result, errors, pending, onCha
           aria-label={`Remove ${rowLabel.toLowerCase()}`}
           className={styles.textlink}
           type="button"
+          disabled={disabled}
           onClick={() => onRemove(row.key)}
         >
           Remove

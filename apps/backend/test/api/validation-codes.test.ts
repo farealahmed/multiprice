@@ -220,6 +220,53 @@ describe.skipIf(!mongoReachable)('line-level schema validation codes', () => {
     );
   });
 
+  it('DESCRIPTION_REQUIRED at path lines.0.description when the field is omitted entirely', async () => {
+    const { description: _description, ...lineWithoutDescription } = buildLinePayload();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/documents',
+      headers: { cookie },
+      payload: {
+        ...buildCreatePayload(),
+        lines: [lineWithoutDescription],
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+    const body = res.json() as ErrorBody;
+    expect(body.error.code).toBe('VALIDATION_FAILED');
+    expect(body.error.details).toContainEqual(
+      expect.objectContaining({ code: 'DESCRIPTION_REQUIRED', path: 'lines.0.description' }),
+    );
+  });
+
+  it('DESCRIPTION_REQUIRED at path lines.0.description on whole-array PATCH when the field is omitted', async () => {
+    const createRes = await app.inject({
+      method: 'POST',
+      url: '/api/v1/documents',
+      headers: { cookie },
+      payload: buildCreatePayload(),
+    });
+    const { id } = createRes.json() as { id: string };
+
+    const { description: _description, ...lineWithoutDescription } = buildLinePayload();
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/documents/${id}`,
+      headers: { cookie },
+      payload: { lines: [lineWithoutDescription] },
+    });
+
+    expect(res.statusCode).toBe(400);
+    const body = res.json() as ErrorBody;
+    expect(body.error.code).toBe('VALIDATION_FAILED');
+    expect(body.error.details).toContainEqual(
+      expect.objectContaining({ code: 'DESCRIPTION_REQUIRED', path: 'lines.0.description' }),
+    );
+  });
+
   it('QUANTITY_TOO_LOW at path lines.0.quantity', async () => {
     const res = await app.inject({
       method: 'POST',

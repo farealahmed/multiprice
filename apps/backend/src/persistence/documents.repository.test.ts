@@ -103,6 +103,30 @@ describe('documents.repository', () => {
     expect(fake.findOneFilters[0]).toMatchObject({ _id: new ObjectId(id), ownerId: 'owner-1' });
   });
 
+  it('findById returns null for a malformed id instead of querying', async () => {
+    const fake = createFakeCollection();
+    const repository = createDocumentsRepository(createFakeDb(fake.collection));
+
+    const result = await repository.findById('owner-1', 'not-a-valid-object-id');
+
+    expect(result).toBeNull();
+    expect(fake.findOneFilters).toHaveLength(0);
+  });
+
+  it('findById propagates a driver/query failure instead of reporting not-found', async () => {
+    const fake = createFakeCollection();
+    const failingCollection = {
+      ...fake.collection,
+      findOne: async () => {
+        throw new Error('connection reset');
+      },
+    } as unknown as Collection<StoredDocument>;
+    const repository = createDocumentsRepository(createFakeDb(failingCollection));
+    const id = new ObjectId().toHexString();
+
+    await expect(repository.findById('owner-1', id)).rejects.toThrow('connection reset');
+  });
+
   it('insert stamps ownerId', async () => {
     const fake = createFakeCollection();
     const repository = createDocumentsRepository(createFakeDb(fake.collection));

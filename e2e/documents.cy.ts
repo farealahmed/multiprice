@@ -41,6 +41,8 @@ describe('documents — create, edit, save, reload', () => {
       cy.visit(`/documents/${documentId}`);
 
       // Row 1 — Widget A: qty 2, unit price 100.00, 10% discount, 5% tax.
+      cy.contains('button', '+ Add line').click();
+      cy.get('[aria-label="Row 1 description"]').type('Widget A');
       cy.get('[aria-label="Row 1 quantity"]').type('2');
       cy.get('[aria-label="Row 1 unit price"]').type('100');
       cy.get('[aria-label="Row 1 discount type"]').select('percent');
@@ -49,12 +51,14 @@ describe('documents — create, edit, save, reload', () => {
 
       // Row 2 — Widget B: qty 1, unit price 50.00, no discount, 5% tax.
       cy.contains('button', '+ Add line').click();
+      cy.get('[aria-label="Row 2 description"]').type('Widget B');
       cy.get('[aria-label="Row 2 quantity"]').type('1');
       cy.get('[aria-label="Row 2 unit price"]').type('50');
       cy.get('[aria-label="Row 2 tax percent"]').type('5');
 
       // Row 3 — Service fee: qty 1, unit price 200.00, $20 fixed discount, no tax.
       cy.contains('button', '+ Add line').click();
+      cy.get('[aria-label="Row 3 description"]').type('Service fee');
       cy.get('[aria-label="Row 3 quantity"]').type('1');
       cy.get('[aria-label="Row 3 unit price"]').type('200');
       cy.get('[aria-label="Row 3 discount type"]').select('fixed');

@@ -44,26 +44,6 @@ function mapDocumentEngineError(error: unknown): { error: { code: 'VALIDATION_FA
   };
 }
 
-/**
- * Backfills a default description for line items that omit one. Keeps the
- * `DESCRIPTION_REQUIRED` error for explicitly empty descriptions while letting
- * the PDF fixture's legacy lines (which carry no description) round-trip.
- */
-function ensureLineDescriptions(body: unknown): unknown {
-  if (typeof body !== 'object' || body === null) return body;
-  const record = body as Record<string, unknown>;
-  if (!Array.isArray(record.lines)) return body;
-  record.lines = record.lines.map((line) => {
-    if (typeof line !== 'object' || line === null) return line;
-    const lineRecord = line as Record<string, unknown>;
-    if (!('description' in lineRecord)) {
-      return { ...lineRecord, description: 'Item' };
-    }
-    return line;
-  });
-  return record;
-}
-
 const documentsRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
   app.get('/api/v1/documents', { preHandler: app.authenticate }, async (request, reply) => {
     const repository = createDocumentsRepository(app.db);
@@ -76,7 +56,7 @@ const documentsRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
 
   app.post('/api/v1/documents', { preHandler: app.authenticate }, async (request, reply) => {
     const repository = createDocumentsRepository(app.db);
-    const input = createDocumentSchema.parse(ensureLineDescriptions(request.body));
+    const input = createDocumentSchema.parse(request.body);
 
     try {
       const doc = await createDocument({
@@ -113,7 +93,7 @@ const documentsRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
   app.patch('/api/v1/documents/:id', { preHandler: app.authenticate }, async (request, reply) => {
     const repository = createDocumentsRepository(app.db);
     const { id } = request.params as { id: string };
-    const input = updateDocumentSchema.parse(ensureLineDescriptions(request.body));
+    const input = updateDocumentSchema.parse(request.body);
 
     try {
       const doc = await updateDocument({

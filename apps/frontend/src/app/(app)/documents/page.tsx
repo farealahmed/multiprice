@@ -3,7 +3,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import * as documents from '@/lib/api/documents';
 import { ApiError, type ApiErrorDetail } from '@/lib/api/client';
@@ -17,6 +17,7 @@ import { CreateDialog } from '@/components/documents/CreateDialog';
 import { DeleteDialog } from '@/components/documents/DeleteDialog';
 import { DocumentsList } from '@/components/documents/DocumentsList';
 import { EmptyState } from '@/components/documents/EmptyState';
+import { Topbar } from '@/components/shell/Topbar';
 import styles from './documents.module.css';
 
 type PageState =
@@ -71,8 +72,9 @@ export default function DocumentsPage() {
     }
   }, []);
 
-  // eslint-disable-next-line @typescript-eslint/no-floating-promises
-  load();
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   // Delete handlers
   const handleDeleteClick = (doc: DocumentSummary) => {
@@ -169,74 +171,77 @@ export default function DocumentsPage() {
 
   return (
     <>
-      <div className={styles.pageHead}>
-        <div className={styles.kicker}>Workspace</div>
-        <h1 className={styles.heading}>Documents</h1>
-        <p className={styles.lede}>
-          Quotes and billing documents with per-line discounts and tax. Drafts
-          are fully editable; finalized documents are locked forever.
-        </p>
-      </div>
-
-      {/* Loading */}
-      {pageState.phase === 'loading' && (
-        <div className={styles.state}>Loading…</div>
-      )}
-
-      {/* Error */}
-      {pageState.phase === 'error' && (
-        <div className={styles.state}>
-          <p>{pageState.message}</p>
-          <button type="button" className={styles.retryBtn} onClick={load}>
-            Try again
-          </button>
+      <Topbar />
+      <main className="page">
+        <div className={styles.pageHead}>
+          <div className={styles.kicker}>Workspace</div>
+          <h1 className={styles.heading}>Documents</h1>
+          <p className={styles.lede}>
+            Quotes and billing documents with per-line discounts and tax. Drafts
+            are fully editable; finalized documents are locked forever.
+          </p>
         </div>
-      )}
 
-      {/* Empty state */}
-      {pageState.phase === 'ok' && pageState.docs.length === 0 && (
-        <EmptyState onCreate={handleCreateClick} />
-      )}
+        {/* Loading */}
+        {pageState.phase === 'loading' && (
+          <div className={styles.state}>Loading…</div>
+        )}
 
-      {/* Document list */}
-      {pageState.phase === 'ok' && pageState.docs.length > 0 && (
-        <>
-          <div className={styles.split}>
-            <div className={styles.grow} />
-            <button
-              type="button"
-              className={styles.btn}
-              onClick={handleCreateClick}
-            >
-              New document <span aria-hidden="true">→</span>
+        {/* Error */}
+        {pageState.phase === 'error' && (
+          <div className={styles.state}>
+            <p>{pageState.message}</p>
+            <button type="button" className={styles.retryBtn} onClick={load}>
+              Try again
             </button>
           </div>
+        )}
 
-          <DocumentsList
-            docs={pageState.docs}
-            onDelete={handleDeleteClick}
+        {/* Empty state */}
+        {pageState.phase === 'ok' && pageState.docs.length === 0 && (
+          <EmptyState onCreate={handleCreateClick} />
+        )}
+
+        {/* Document list */}
+        {pageState.phase === 'ok' && pageState.docs.length > 0 && (
+          <>
+            <div className={styles.split}>
+              <div className={styles.grow} />
+              <button
+                type="button"
+                className={styles.btn}
+                onClick={handleCreateClick}
+              >
+                New document <span aria-hidden="true">→</span>
+              </button>
+            </div>
+
+            <DocumentsList
+              docs={pageState.docs}
+              onDelete={handleDeleteClick}
+            />
+          </>
+        )}
+
+        <hr className={styles.rule} />
+
+        {/* Create dialog */}
+        {createOpen && (
+          <CreateDialog
+            onConfirm={handleCreateConfirm}
+            onCancel={handleCreateCancel}
           />
-        </>
-      )}
+        )}
 
-      <hr className={styles.rule} />
-
-      {/* Create dialog */}
-      {createOpen && (
-        <CreateDialog
-          onConfirm={handleCreateConfirm}
-          onCancel={handleCreateCancel}
-        />
-      )}
-
-      {/* Delete dialog */}
-      {deleteTarget !== null && (
-        <DeleteDialog
-          doc={deleteTarget}
-          onConfirm={handleDeleteConfirm}
-          onCancel={handleDeleteCancel}
-        />
-      )}
+        {/* Delete dialog */}
+        {deleteTarget !== null && (
+          <DeleteDialog
+            doc={deleteTarget}
+            onConfirm={handleDeleteConfirm}
+            onCancel={handleDeleteCancel}
+          />
+        )}
+      </main>
     </>
   );
 }

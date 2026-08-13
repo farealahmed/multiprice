@@ -24,12 +24,14 @@ export function createDocumentsRepository(db: Db): DocumentsRepository {
     },
 
     findById: async (ownerId, id) => {
+      let objectId: ObjectId;
       try {
-        return await base.findOne(ownerId, { _id: new ObjectId(id) });
+        objectId = new ObjectId(id);
       } catch {
         // Invalid ObjectId shape → treat as not found.
         return null;
       }
+      return base.findOne(ownerId, { _id: objectId });
     },
 
     insert: async (ownerId, document) => {

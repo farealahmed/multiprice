@@ -24,6 +24,14 @@ import {
 } from '../support/factories.ts';
 import { pdfSampleExpected, pdfSampleLines } from '../fixtures/pdf-sample.ts';
 
+// `pdfSampleLines` is typed against the pricing contract, which has no
+// `description` field. The document contract requires one per line, so
+// route-level tests attach one here rather than growing the shared fixture.
+const pdfSampleLinesWithDescriptions = pdfSampleLines.map((line, index) => ({
+  ...line,
+  description: `PDF sample line ${index + 1}`,
+}));
+
 // ---------------------------------------------------------------------------
 // Guard
 // ---------------------------------------------------------------------------
@@ -208,7 +216,7 @@ describe.skipIf(!mongoReachable)('POST /api/v1/documents', () => {
       headers: { cookie },
       payload: {
         ...buildCreatePayload(),
-        lines: pdfSampleLines,
+        lines: pdfSampleLinesWithDescriptions,
       },
     });
 
@@ -230,7 +238,7 @@ describe.skipIf(!mongoReachable)('POST /api/v1/documents', () => {
       headers: { cookie },
       payload: {
         ...buildCreatePayload(),
-        lines: pdfSampleLines,
+        lines: pdfSampleLinesWithDescriptions,
       },
     });
 
@@ -429,7 +437,7 @@ describe.skipIf(!mongoReachable)('PATCH /api/v1/documents/:id', () => {
       method: 'PATCH',
       url: `/api/v1/documents/${id}`,
       headers: { cookie },
-      payload: { lines: pdfSampleLines },
+      payload: { lines: pdfSampleLinesWithDescriptions },
     });
 
     expect(res.statusCode).toBe(200);
