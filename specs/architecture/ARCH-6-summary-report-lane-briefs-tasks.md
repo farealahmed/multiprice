@@ -516,7 +516,7 @@ contract, now exercised at the route).
 
 ## Task T6: Reconciliation & aggregation evidence suite (the deliverable)
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** tdd (written blind against T1's contract, red until T5 lands — mirrors ARCH-5's evidence-suite task)
 > **Effort:** l
 > **Priority:** critical
