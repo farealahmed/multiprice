@@ -47,6 +47,10 @@ function isGuardedRoute(method: string, path: string): boolean {
 function isCandidateMutationRoute(method: string, path: string): boolean {
   // POST /api/v1/documents creates a new document; it is not an existing-document mutation.
   if (method === 'POST' && path === '/api/v1/documents') return false;
+  // POST /api/v1/documents/:id/duplicate creates a new draft from the source;
+  // it never mutates the source document, so it must stay reachable on a
+  // finalized source rather than being locked behind the immutability guard.
+  if (method === 'POST' && path === '/api/v1/documents/:id/duplicate') return false;
   return (
     ['POST', 'PATCH', 'PUT', 'DELETE'].includes(method) && path.startsWith('/api/v1/documents/:id')
   );

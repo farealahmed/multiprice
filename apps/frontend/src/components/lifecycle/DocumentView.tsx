@@ -3,11 +3,14 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { Money } from '@/components/money/Money';
 import { StatusPill } from '@/components/documents/StatusPill';
 import { Topbar } from '@/components/shell/Topbar';
+import { ApiError } from '@/lib/api/client';
+import { duplicate } from '@/lib/api/lifecycle';
 import { preview } from '@/lib/api/pricing';
 import type { DocumentResponse, LineItemResponse } from '@/lib/api/types/document';
 import type { DocumentResult, LineInput } from '@/lib/api/types/pricing';
@@ -49,9 +52,12 @@ type DocumentViewProps = {
  * only immutability enforcement point, and this view reflects that state.
  */
 export function DocumentView({ document }: DocumentViewProps) {
+  const router = useRouter();
   const [result, setResult] = useState<DocumentResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [duplicating, setDuplicating] = useState(false);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -78,6 +84,20 @@ export function DocumentView({ document }: DocumentViewProps) {
     };
   }, [document]);
 
+  const handleDuplicate = async () => {
+    setDuplicating(true);
+    setDuplicateError(null);
+    try {
+      const copy = await duplicate(document.id);
+      router.push(`/documents/${copy.id}`);
+    } catch (err) {
+      setDuplicateError(
+        err instanceof ApiError ? err.message : 'Failed to duplicate document. Please try again.',
+      );
+      setDuplicating(false);
+    }
+  };
+
   return (
     <>
       <Topbar />
@@ -91,10 +111,26 @@ export function DocumentView({ document }: DocumentViewProps) {
               computed server-side and are now locked.
             </p>
           </div>
-          <Link className={styles.back} href="/documents">
-            ← Back to documents
-          </Link>
+          <div className={styles.headerActions}>
+            <button
+              type="button"
+              className={styles.button}
+              disabled={duplicating}
+              onClick={() => void handleDuplicate()}
+            >
+              {duplicating ? 'Duplicating…' : 'Duplicate as draft'}
+            </button>
+            <Link className={styles.back} href="/documents">
+              ← Back to documents
+            </Link>
+          </div>
         </header>
+
+        {duplicateError !== null && (
+          <p className={styles.actionError} role="alert">
+            {duplicateError}
+          </p>
+        )}
 
         <StatusBanner>
           <strong>Locked.</strong> Lines, amounts, and metadata cannot be edited.

@@ -1,7 +1,9 @@
+import { randomUUID } from 'crypto';
+
 import { calculateDocument } from '../pricing/index.ts';
 import type { PricingError } from '../pricing/index.ts';
 import type { DocumentsRepository } from '../persistence/documents.repository.ts';
-import type { StoredLineItem, StoredTotals } from '../domain/document.ts';
+import type { StoredDocument, StoredLineItem, StoredTotals } from '../domain/document.ts';
 import type { DocumentResponse } from '../contracts/document.ts';
 import { DOCUMENT_HAS_NO_LINES } from '../contracts/lifecycle.ts';
 import {
@@ -107,6 +109,48 @@ export async function finalizeDocument(params: {
   }
 
   throw new DocumentAlreadyFinalizedError();
+}
+
+/**
+ * Copies a document (draft or finalized) into a new draft owned by the same
+ * user. Lines are re-minted with fresh ids -- they are never shared with the
+ * source document -- and totals are recomputed rather than copied, keeping
+ * the "server always computes totals" invariant (A8) true for this write too.
+ */
+export async function duplicateDocument(params: {
+  ownerId: string;
+  repository: DocumentsRepository;
+  id: string;
+}): Promise<DocumentResponse> {
+  const { ownerId, repository, id } = params;
+
+  const source = await repository.findById(ownerId, id);
+  if (!source) {
+    throw new DocumentNotFoundError();
+  }
+
+  const lines: StoredLineItem[] = source.lines.map((line) => ({ ...line, id: randomUUID() }));
+  const engineResult = calculateDocument(lines.map(toEngineLineWire));
+  const totals: StoredTotals = {
+    subtotal: engineResult.subtotal,
+    totalDiscount: engineResult.totalDiscount,
+    totalTax: engineResult.totalTax,
+    grandTotal: engineResult.grandTotal,
+  };
+
+  const now = new Date();
+  const doc: Omit<StoredDocument, '_id' | 'ownerId'> = {
+    title: source.title,
+    customer: source.customer,
+    issueDate: source.issueDate,
+    status: 'draft',
+    lines,
+    totals,
+    createdAt: now,
+    updatedAt: now,
+  };
+  const result = await repository.insert(ownerId, doc);
+  return toDocumentResponse({ _id: result.insertedId, ownerId, ...doc });
 }
 
 /** Converts a stored line (cents/thousandths/basis points) to the engine line shape. */

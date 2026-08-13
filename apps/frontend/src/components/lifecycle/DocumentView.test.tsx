@@ -1,9 +1,11 @@
 /** @jsxRuntime automatic */
 /** @jsxImportSource react */
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { AnchorHTMLAttributes, MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ApiError } from '@/lib/api/client';
+import { duplicate } from '@/lib/api/lifecycle';
 import { preview } from '@/lib/api/pricing';
 import type { DocumentResponse } from '@/lib/api/types/document';
 import type { DocumentResult } from '@/lib/api/types/pricing';
@@ -14,8 +16,18 @@ vi.mock('@/lib/api/pricing', () => ({
   preview: vi.fn(),
 }));
 
+vi.mock('@/lib/api/lifecycle', () => ({
+  duplicate: vi.fn(),
+}));
+
 vi.mock('@/components/shell/Topbar', () => ({
   Topbar: () => null,
+}));
+
+const pushMock = vi.fn();
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: pushMock }),
 }));
 
 type LinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
@@ -29,6 +41,7 @@ vi.mock('next/link', () => ({
 }));
 
 const previewMock = vi.mocked(preview);
+const duplicateMock = vi.mocked(duplicate);
 
 const finalizedDocument: DocumentResponse = {
   id: 'document-1',
@@ -89,6 +102,8 @@ const previewResult: DocumentResult = {
 
 beforeEach(() => {
   previewMock.mockResolvedValue(previewResult);
+  pushMock.mockClear();
+  duplicateMock.mockReset();
 });
 
 afterEach(() => {
@@ -136,5 +151,26 @@ describe('DocumentView', () => {
     expect(totals?.textContent).toContain('− $101.80');
     expect(totals?.textContent).toContain('+ $154.58');
     expect(totals?.textContent).toContain('$2086.78');
+  });
+
+  it('duplicates the document and navigates to the new draft', async () => {
+    duplicateMock.mockResolvedValue({ ...finalizedDocument, id: 'document-2', status: 'draft' });
+    render(<DocumentView document={finalizedDocument} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate as draft' }));
+
+    await waitFor(() => expect(duplicateMock).toHaveBeenCalledWith('document-1'));
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/documents/document-2'));
+  });
+
+  it('shows an error and re-enables the button when duplicate fails', async () => {
+    duplicateMock.mockRejectedValue(new ApiError('INTERNAL_ERROR', 'Could not duplicate document.'));
+    render(<DocumentView document={finalizedDocument} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Duplicate as draft' }));
+
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Could not duplicate document.'));
+    expect(screen.getByRole('button', { name: 'Duplicate as draft' })).not.toBeDisabled();
+    expect(pushMock).not.toHaveBeenCalled();
   });
 });
