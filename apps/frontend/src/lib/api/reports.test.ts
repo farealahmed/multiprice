@@ -20,21 +20,34 @@ const apiFetchMock = vi.mocked(apiFetch);
 describe('reports API client', () => {
   beforeEach(() => {
     apiFetchMock.mockReset();
-    apiFetchMock.mockResolvedValue({});
+    apiFetchMock.mockResolvedValue({
+      from: '2026-07-01',
+      to: '2026-07-31',
+      documentCount: 2,
+      totalGrandTotal: 7426.78,
+      totalTax: 274.58,
+      totalDiscount: 401.8,
+    });
   });
 
-  it('gets the report summary with the supplied range', async () => {
-    await expect(summary('2026-07-01', '2026-07-31')).resolves.toEqual({});
+  it('calls GET /api/v1/reports/summary with from and to as query params', async () => {
+    await summary('2026-07-01', '2026-07-31');
 
     expect(apiFetchMock).toHaveBeenCalledWith(
       '/api/v1/reports/summary?from=2026-07-01&to=2026-07-31',
     );
   });
 
+  it('calls the bare path when no range is supplied', async () => {
+    await summary();
+
+    expect(apiFetchMock).toHaveBeenCalledWith('/api/v1/reports/summary');
+  });
+
   it('propagates ApiError unchanged', async () => {
-    const error = new ApiError('DATE_RANGE_INVALID', 'Date range is invalid.');
+    const error = new ApiError('DATE_RANGE_INVERTED', 'to must be on or after from.');
     apiFetchMock.mockRejectedValueOnce(error);
 
-    await expect(summary('2026-07-01', '2026-07-31')).rejects.toBe(error);
+    await expect(summary('2026-07-31', '2026-07-01')).rejects.toBe(error);
   });
 });
