@@ -286,7 +286,7 @@ base helper's intended first real consumer beyond its own unit tests.
 
 ## Task T4: services/documents.ts — recompute-and-persist
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** tdd
 > **Effort:** m
 > **Priority:** critical
