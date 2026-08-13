@@ -23,6 +23,7 @@ import type {
   UpdateDocumentInput,
 } from '../contracts/document.ts';
 import { DOCUMENT_NOT_FOUND } from '../contracts/document.ts';
+import { DOCUMENT_FINALIZED } from '../contracts/lifecycle.ts';
 
 // ---------------------------------------------------------------------------
 // Internal types
@@ -40,6 +41,19 @@ export class DocumentNotFoundError extends Error {
   constructor() {
     super('Document not found');
     this.name = 'DocumentNotFoundError';
+  }
+}
+
+/**
+ * Domain error thrown when a conditional draft-only write (update, remove, or
+ * finalize) loses its race against a concurrent finalization: the document
+ * exists and is owned by the caller, but is no longer a draft.
+ */
+export class DocumentAlreadyFinalizedError extends Error {
+  readonly code: typeof DOCUMENT_FINALIZED = DOCUMENT_FINALIZED;
+  constructor() {
+    super('Document is already finalized');
+    this.name = 'DocumentAlreadyFinalizedError';
   }
 }
 
@@ -168,11 +182,17 @@ async function recomputeAndPersistInternal(params: ServiceParams): Promise<Docum
   const { ownerId, repository, op } = params;
 
   // ---- Remove path ------------------------------------------------------------
+  // Conditional delete (status: 'draft' in the filter) closes the TOCTOU window
+  // between checking existence and deleting: a concurrent finalize can no longer
+  // slip a delete through after flipping the document to finalized.
   if (op === 'remove') {
-    const existing = await repository.findById(ownerId, params.id);
-    if (!existing) throw new DocumentNotFoundError();
-    await repository.remove(ownerId, params.id);
-    return toDocumentResponse(existing);
+    const removed = await repository.remove(ownerId, params.id);
+    if (!removed) {
+      const stillExists = await repository.findById(ownerId, params.id);
+      if (!stillExists) throw new DocumentNotFoundError();
+      throw new DocumentAlreadyFinalizedError();
+    }
+    return toDocumentResponse(removed);
   }
 
   // ---- Load existing document for update ----------------------------------------
@@ -240,9 +260,18 @@ async function recomputeAndPersistInternal(params: ServiceParams): Promise<Docum
     patch.lines = storedLines;
     patch.totals = totals;
   }
-  await repository.update(ownerId, params.id, patch);
-  const updated = await repository.findById(ownerId, params.id);
-  return toDocumentResponse(updated!);
+  // Conditional update (status: 'draft' in the filter) closes the same TOCTOU
+  // window as the remove path above: a concurrent finalize between the read at
+  // the top of this function and this write causes the write itself to fail,
+  // rather than silently committing a mutation to a document that is now
+  // locked.
+  const updated = await repository.update(ownerId, params.id, patch);
+  if (!updated) {
+    const stillExists = await repository.findById(ownerId, params.id);
+    if (!stillExists) throw new DocumentNotFoundError();
+    throw new DocumentAlreadyFinalizedError();
+  }
+  return toDocumentResponse(updated);
 }
 
 // ---------------------------------------------------------------------------

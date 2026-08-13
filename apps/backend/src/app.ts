@@ -39,14 +39,17 @@ export async function buildApp(opts: BuildAppOptions = {}): Promise<FastifyInsta
   });
 
   // Plugins load first — their hooks must apply to routes.
+  // Colocated *.test.ts files are excluded from autoload.
   await app.register(autoload, {
     dir: join(apiDir, 'plugins'),
     forceESM: true,
+    ignorePattern: /.*\.test\.(ts|js)$/i,
   });
 
   await app.register(autoload, {
     dir: join(apiDir, 'routes'),
     forceESM: true,
+    ignorePattern: /registry\.(ts|js)$|.*\.test\.(ts|js)$/i,
   });
 
   return app;

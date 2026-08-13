@@ -9,7 +9,12 @@ import {
 import type { LineItemInput } from '../../contracts/document.ts';
 import type { StoredLineItem } from '../../domain/document.ts';
 import { createDocumentsRepository } from '../../persistence/documents.repository.ts';
-import { updateDocument, DocumentNotFoundError } from '../../services/documents.ts';
+import {
+  updateDocument,
+  DocumentNotFoundError,
+  DocumentAlreadyFinalizedError,
+} from '../../services/documents.ts';
+import { DOCUMENT_FINALIZED } from '../../contracts/lifecycle.ts';
 import { mapPricingEngineError } from '../errors/engine-errors.ts';
 
 function documentNotFoundEnvelope() {
@@ -17,6 +22,15 @@ function documentNotFoundEnvelope() {
     error: {
       code: DOCUMENT_NOT_FOUND,
       message: 'Document not found',
+    },
+  };
+}
+
+function documentFinalizedEnvelope() {
+  return {
+    error: {
+      code: DOCUMENT_FINALIZED,
+      message: 'Document is already finalized',
     },
   };
 }
@@ -85,6 +99,9 @@ const documentLinesRoutes: FastifyPluginAsync = async (app: FastifyInstance) => 
       if (error instanceof DocumentNotFoundError) {
         return reply.code(404).send(documentNotFoundEnvelope());
       }
+      if (error instanceof DocumentAlreadyFinalizedError) {
+        return reply.code(409).send(documentFinalizedEnvelope());
+      }
       const envelope = mapDocumentEngineError(error);
       if (envelope != null) {
         return reply.code(400).send(envelope);
@@ -121,6 +138,9 @@ const documentLinesRoutes: FastifyPluginAsync = async (app: FastifyInstance) => 
       if (error instanceof DocumentNotFoundError) {
         return reply.code(404).send(documentNotFoundEnvelope());
       }
+      if (error instanceof DocumentAlreadyFinalizedError) {
+        return reply.code(409).send(documentFinalizedEnvelope());
+      }
       const envelope = mapDocumentEngineError(error);
       if (envelope != null) {
         return reply.code(400).send(envelope);
@@ -152,6 +172,9 @@ const documentLinesRoutes: FastifyPluginAsync = async (app: FastifyInstance) => 
     } catch (error) {
       if (error instanceof DocumentNotFoundError) {
         return reply.code(404).send(documentNotFoundEnvelope());
+      }
+      if (error instanceof DocumentAlreadyFinalizedError) {
+        return reply.code(409).send(documentFinalizedEnvelope());
       }
       throw error;
     }
