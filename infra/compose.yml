@@ -1,0 +1,77 @@
+name: multiprice
+
+services:
+  mongo:
+    image: mongo:7.0.28
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - internal
+    restart: unless-stopped
+
+  backend:
+    image: multiprice-backend:local
+    depends_on:
+      mongo:
+        condition: service_healthy
+    environment:
+      PORT: "3001"
+      NODE_ENV: "production"
+      MONGO_URL: "mongodb://mongo:27017"
+      MONGO_DB: "multiprice"
+      BACKEND_ORIGIN: "http://backend:3001"
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET must be set in infra/.env}"
+      COOKIE_NAME: "${COOKIE_NAME:-mp_session}"
+    networks:
+      - internal
+    restart: unless-stopped
+
+  frontend:
+    image: multiprice-frontend:local
+    depends_on:
+      - backend
+    environment:
+      PORT: "3000"
+      NODE_ENV: "production"
+      # Next's standalone server binds to $HOSTNAME if set. Docker sets it
+      # to the container ID by default, which makes the app unreachable
+      # except via Docker's internal DNS — override it explicitly.
+      HOSTNAME: "0.0.0.0"
+    networks:
+      - internal
+      - edge
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+    networks:
+      - edge
+    restart: unless-stopped
+
+volumes:
+  mongo_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  # backend + mongo only — never reachable from outside the compose network,
+  # and not reachable from caddy either (caddy only ever proxies to frontend;
+  # the backend has no public vhost, see infra/Caddyfile).
+  internal:
+  # caddy + frontend only
+  edge:
