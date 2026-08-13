@@ -3,4 +3,7 @@ export type NavItem = {
   label: string;
 };
 
-export const NAV_ITEMS: NavItem[] = [{ href: '/editor', label: 'Editor' }];
+export const NAV_ITEMS: NavItem[] = [
+  { href: '/documents', label: 'Documents' },
+  { href: '/editor', label: 'Editor' },
+];
