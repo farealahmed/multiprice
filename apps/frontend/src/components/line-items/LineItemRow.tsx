@@ -12,6 +12,7 @@ import type { RowState } from './row-state';
 
 type LineItemRowProps = {
   index: number;
+  lineId?: string;
   row: RowState;
   /** Positional match from the last server response; undefined before it lands. */
   result?: LineResult;
@@ -21,9 +22,9 @@ type LineItemRowProps = {
   onRemove: (key: string) => void;
 };
 
-export function LineItemRow({ index, row, result, errors, pending, onChange, onRemove }: LineItemRowProps) {
-  const rowLabel = `Row ${index + 1}`;
+export function LineItemRow({ index, lineId, row, result, errors, pending, onChange, onRemove }: LineItemRowProps) {
   const patch = (value: Partial<RowState>) => onChange(row.key, value);
+  const rowLabel = `Row ${index + 1}`;
 
   const resultCell = (render: (line: LineResult) => ReactNode, strong?: boolean) => (
     <td
@@ -35,7 +36,7 @@ export function LineItemRow({ index, row, result, errors, pending, onChange, onR
   );
 
   return (
-    <tr>
+    <tr data-line-id={lineId}>
       <td className={styles.numCell}>{index + 1}</td>
       <td>
         <input
