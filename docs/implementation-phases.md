@@ -225,7 +225,7 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 **README** Prerequisites and step-by-step setup; the calculation and rounding policy **with the PDF's worked example**; finalize/immutability rules; assumptions and tradeoffs, including the two policy calls above; what you'd improve before production; the live URL.
 
-**CI/CD** Reverses the "no CI" default assumed through Phase 0. GitHub Actions runs both apps' suites on every push and pull request; merging to `main` redeploys the live URL by re-running `6-E`'s documented release command — the pipeline automates what `6-E` already proved works by hand, it does not replace it. Deployment target is a DigitalOcean droplet reused from a sibling project (`multip`, decommissioned first) behind Caddy and Cloudflare DNS, at `multiprice.farealahmed.com` — one public hostname, since this app's frontend already proxies `/api/*` internally.
+**CI/CD** Reverses the "no CI" default assumed through Phase 0. GitHub Actions runs both apps' suites on every push and pull request; merging to `main` redeploys the live URL by re-running `6-E`'s documented release command — the pipeline automates what `6-E` already proved works by hand, it does not replace it. Deployment target is a dedicated DigitalOcean droplet behind Caddy and Cloudflare DNS, at `multiprice.farealahmed.com` — one public hostname, since this app's frontend already proxies `/api/*` internally.
 
 **Backend** A seed script so a reviewer can see data immediately. Generate OpenAPI only if it falls naturally out of the chosen Fastify schema setup; do not add a client-generation or documentation pipeline.
 
