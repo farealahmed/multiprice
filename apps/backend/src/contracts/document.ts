@@ -103,6 +103,30 @@ export const lineItemInputSchema = z.intersection(
 
 export type LineItemInput = z.infer<typeof lineItemInputSchema>;
 
+/**
+ * Partial line item update used by `PATCH /documents/:id/lines/:lineId`.
+ *
+ * Every field is optional; the route merges the payload with the existing line
+ * and validates the result through `lineItemInputSchema`, so the numeric bounds
+ * and ranges are enforced by the same schema object used on create.
+ */
+const updateLineItemDiscountSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('none') }),
+  z.object({ type: z.literal('percent'), value: z.number() }),
+  z.object({ type: z.literal('fixed'), value: z.number() }),
+]);
+
+export const updateLineItemSchema = z.object({
+  id: z.string().optional(),
+  description: z.string().optional(),
+  quantity: z.number().optional(),
+  unitPrice: z.number().optional(),
+  discount: updateLineItemDiscountSchema.optional(),
+  taxPercent: z.number().nullable().optional(),
+});
+
+export type UpdateLineItemInput = z.infer<typeof updateLineItemSchema>;
+
 const discountResponseSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('none') }),
   z.object({ type: z.literal('percent'), value: z.number() }),

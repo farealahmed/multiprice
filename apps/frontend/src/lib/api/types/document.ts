@@ -27,6 +27,18 @@ export type UpdateDocumentInput = {
   lines?: LineItemInput[];
 };
 
+export type UpdateLineItemInput = {
+  id?: string;
+  description?: string;
+  quantity?: number;
+  unitPrice?: number;
+  discount?:
+    | { type: 'none' }
+    | { type: 'percent'; value: number }
+    | { type: 'fixed'; value: number };
+  taxPercent?: number | null;
+};
+
 export type LineItemResponse = {
   id: string;
   description: string;
