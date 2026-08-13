@@ -29,6 +29,14 @@ describe('documents API client', () => {
     expect(apiFetchMock).toHaveBeenCalledWith('/api/v1/documents');
   });
 
+  it('gets the documents collection filtered by the supplied range', async () => {
+    await expect(list({ from: '2026-07-01', to: '2026-07-31' })).resolves.toEqual([]);
+
+    expect(apiFetchMock).toHaveBeenCalledWith(
+      '/api/v1/documents?from=2026-07-01&to=2026-07-31',
+    );
+  });
+
   it('gets a document by id', async () => {
     await expect(get('document-1')).resolves.toEqual([]);
 

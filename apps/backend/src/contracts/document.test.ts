@@ -5,6 +5,7 @@ import {
   createDocumentSchema,
   updateDocumentSchema,
   documentResponseSchema,
+  documentListQuerySchema,
   DOCUMENT_ERROR_CODES,
   DOCUMENT_NOT_FOUND,
   TITLE_REQUIRED,
@@ -15,6 +16,7 @@ import {
   SERVER_MANAGED_FIELD,
 } from './document.ts';
 import { QUANTITY_TOO_LOW } from './pricing.ts';
+import { dateRangeQuerySchema, DATE_RANGE_INVERTED } from './report.ts';
 
 function domainCode(
   result: {
@@ -222,6 +224,22 @@ describe('document schemas — error code completeness', () => {
     expect(DOCUMENT_ERROR_CODES.length).toBe(expected.length);
     for (const code of expected) {
       expect(DOCUMENT_ERROR_CODES).toContain(code);
+    }
+  });
+});
+
+describe('document schemas — list query reuse', () => {
+  it('reuses report.ts dateRangeQuerySchema instead of redeclaring it', () => {
+    expect(documentListQuerySchema).toBe(dateRangeQuerySchema);
+  });
+
+  it('produces the same inverted-range error as the report schema', () => {
+    const result = documentListQuerySchema.safeParse({ from: '2026-08-01', to: '2026-07-01' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const issue = result.error.issues.find((i) => i.code === 'custom');
+      expect(issue?.params?.code).toBe(DATE_RANGE_INVERTED);
+      expect(issue?.path).toEqual(['to']);
     }
   });
 });
