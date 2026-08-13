@@ -6,9 +6,10 @@ Plan context: `docs/implementation-phases.md` § Phase 6. Rules: `docs/parallel-
 **Retires: Communication** — the row most often lost by people whose code was fine.
 
 ```
-6-E deploy ─┐                    ┌─ 6-A2 README final ─┐
-6-A1 draft ─┘  (wave 8)   wave 9  ├─ 6-B seed script ───┤ ──► J6 ──► 6-D print ──► J7
-                                  └─ 6-C quality pass ──┘
+6-E deploy ──┐                   ┌─ 6-A2 README final ─┐
+6-A1 draft ──┤  (wave 8)  wave 9  ├─ 6-B seed script ───┤
+6-F1 CI ─────┘                   ├─ 6-C quality pass ──┤ ──► J6 ──► 6-D print ──► J7
+                                  └─ 6-F2 CD ───────────┘
 ```
 
 No gate: there is no new contract in this phase. `6-A` is split in two, because the README's technical content is frozen well before the behaviour it describes has landed:
@@ -17,6 +18,8 @@ No gate: there is no new contract in this phase. `6-A` is split in two, because 
 - **`6-A2` (wave 9)** — finalizes against landed behaviour and the `specs/lanes/*.md` reports, and verifies the instructions on a fresh clone. Depends on `J5`.
 
 Deployment is **`6-E`**, a real lane in wave 8 rather than an assumption. The PDF makes a public URL a graded deliverable, and an unowned premise is how that gets discovered at submission time. `6-E` runs before `6-A2` so the README has a URL to state and `J6` has a live build to verify.
+
+**`6-F` (revision)** — this phase originally assumed no CI pipeline (`0-C` and `6-E`'s guardrails both said so): one repeatable command was the requirement, automation was not. That was a scope call for a take-home, and the human has since decided otherwise — a real pipeline is now part of the submission. `6-F` is split the same way `6-A` is, for the same reason: `6-F1` (wave 8) wires test automation, which needs nothing `J4` hasn't already proved; `6-F2` (wave 9) wires the deploy step, which needs `6-E`'s release command to exist first.
 
 ---
 
@@ -107,46 +110,78 @@ Deployment is **`6-E`**, a real lane in wave 8 rather than an assumption. The PD
 
 ## Lane 6-E — Deployment
 
-**Agent** infra-engineer · **Depends on** J4, and on the inputs below · **Parallel with** 6-A1 (wave 8)
+**Agent** infra-engineer · **Depends on** J4 · **Parallel with** 6-A1, 6-F1 (wave 8)
 
 **Mission** A publicly reachable URL running this application, and a release path someone else can repeat.
 
-**Owns** `deploy/**` (provider configuration), `.env.production.example`, `specs/lanes/deployment.md`
+**Owns** `infra/compose.yml`, `infra/Caddyfile`, `.env.production.example`, `specs/lanes/deployment.md`
 
 **Reads, never edits** `compose.yml`, `apps/*/Dockerfile`, `.env.example`
 
-### Inputs required before this lane starts
+### Inputs (decided)
 
-The human supplies these; do not guess at any of them, and do not start without them:
+Modeled directly on a sibling project's working deployment — `../multip` on disk, a separate repo (`foyzulkarim/multip` on GitHub, unrelated to this one) — read for its proven shape, not copied wholesale, because that project exposes two public subdomains and this one deliberately keeps a single origin (see Build §2).
 
-1. **Provider** — where the two containers run (Fly, Railway, Render, a VPS, something else).
-2. **Database** — managed Mongo (Atlas or equivalent) with its connection string, or a database container the provider runs. Managed is strongly preferred: a containerized Mongo with no backing volume loses a reviewer's data on every redeploy.
-3. **Hostname** — the URL the reviewer will open, and whether frontend and backend share it.
-4. **Secrets** — where `JWT_SECRET` and the Mongo credentials live in that provider.
+1. **Provider** — the DigitalOcean droplet already running `multip`. Its hardening, Docker install, and Cloudflare zone (`farealahmed.com`) are reused as-is; see the prerequisite below.
+2. **Database** — self-hosted Mongo, one container, named volume, **no published host port**. No replica set: unlike `multip`, this app has no multi-document transactions (finalize is one atomic write on an embedded aggregate), so a plain `mongod` is enough — do not port `multip`'s `--replSet`/`mongo-init` machinery.
+3. **Hostname** — `multiprice.farealahmed.com`. One Cloudflare `A` record, DNS-only ("grey cloud", not proxied), same pattern as `multip`'s existing record, so Caddy's own Let's Encrypt HTTP challenge works. **One hostname only** — this repo's frontend already proxies `/api/*` to the backend via `BACKEND_ORIGIN` (see `compose.yml`), so only the frontend needs a public vhost; the backend stays reachable over the compose network alone. Do not give the backend its own subdomain the way `multip` does.
+4. **Secrets** — GitHub Actions repository secrets on `farealahmed/multiprice`; see `6-F`'s brief for the exact names. `JWT_SECRET` and the Mongo credentials live in the droplet's `infra/.env` (gitignored, created from `.env.production.example` on first deploy, never overwritten by later deploys).
 
-If any is still undecided when this lane starts, stop and report rather than inventing one. A deployment built against a guessed provider is thrown away.
+### Sequencing on the shared droplet
+
+`multip` is live on this droplet and **stays running while `6-E` deploys `multiprice` alongside it** — a new compose project, a new Caddy vhost, on the same Docker host. Only once `multiprice` is verified working (this lane's Done criteria) does decommissioning `multip` happen — a separate, deliberate, destructive action (stop and remove its compose project and containers, free its Caddy vhost / DNS record) that the human drives directly, not something any lane runs automatically. Do not touch `multip`'s containers, compose project, or Caddy vhost from this lane — name-space everything (compose project name, container names, the new vhost) so the two stacks cannot collide while both exist.
 
 **Build**
-1. `.env.production.example` — every variable the deployed stack needs, with real names and empty values. `JWT_SECRET` is generated per environment and **never** the development default from `compose.yml`; a shared signing secret between local and production means locally minted sessions are valid on the live URL.
-2. Provider configuration in `deploy/`, building from the existing production Dockerfiles. Do not write new build tooling — `0-C` already produces images that run.
-3. **Keep the same-origin model.** The frontend proxies `/api/*` to the backend via `BACKEND_ORIGIN`, exactly as locally. If the provider gives the two services separate hostnames, the proxy is what keeps the session cookie working — a cross-site deployment would need `SameSite=None; Secure` and the cookie would then be at the mercy of third-party-cookie policy. Route through the frontend host and the problem does not exist.
+1. `infra/compose.yml` — `caddy`, `frontend`, `backend`, `mongo`, as a **new, separate compose project** on the shared droplet (distinct project name/network from `multip`'s, so `docker compose` never conflates the two stacks). `caddy` and `frontend` on an `edge` network; `backend` and `mongo` on an `internal` network only. No `build:` key on `frontend`/`backend` — images arrive pre-built (see `6-F`); this lane's own manual first deploy may build locally once to prove the shape, but the standing mechanism is 6-F's tarball delivery. Reuses `apps/*/Dockerfile` as-is — no new build tooling, `0-C` already produces images that run.
+2. `infra/Caddyfile` — **one vhost**, `multiprice.farealahmed.com`, automatic TLS, `reverse_proxy` to `frontend` only. No second vhost — the backend is never public, so `SameSite=None` and third-party-cookie policy never become this project's problem.
+3. `.env.production.example` — every variable the deployed stack needs, real names, empty values. `JWT_SECRET` generated per environment and **never** the development default from `compose.yml`.
 4. `Secure` cookies and `NODE_ENV=production` on the deployed backend; confirm the config validator rejects a missing `JWT_SECRET` rather than booting with a default.
-5. Deploy once, then smoke-test **through the browser, not just curl**: sign up, create a document with the PDF's sample lines, see `421.50`, finalize, confirm the edit is rejected. Cookie and proxy failures show up in a browser and not in curl.
-6. Seed the deployed database (`6-B`'s script, once it exists) or create a demo account, so a reviewer opening the URL sees something.
-7. Write `specs/lanes/deployment.md`: the URL, the provider, the exact release command, where secrets live, how to roll back, and any manual step. `6-A2` writes the README's setup and live-URL sections from this file, so anything omitted here is missing from the submission.
+5. Deploy once by hand, then smoke-test **through the browser, not just curl**: sign up, create a document with the PDF's sample lines, see `421.50`, finalize, confirm the edit is rejected. Cookie and proxy failures show up in a browser and not in curl.
+6. Seed the deployed database (`6-B`'s script, once it exists) or create a demo account.
+7. Write `specs/lanes/deployment.md`: the URL, the droplet (reused from `multip`, decommission noted), the exact manual release command, where secrets live (`infra/.env` on the droplet, GitHub Actions secrets for `6-F`), how to roll back, and any manual step. `6-A2` writes the README's setup and live-URL sections from this file, and `6-F2` wires its deploy job from the same facts — anything omitted here is missing from both.
 
 **Done when** the URL is reachable from a browser with no session state, and the smoke test above passes on it end to end.
 
-**Guardrails** No application source changes. If the app needs a change to deploy — a health path, a port, a build flag — request it in your report; `J6` applies it. No CI pipeline: one repeatable command is the requirement, not automation.
+**Guardrails** No application source changes. If the app needs a change to deploy — a health path, a port, a build flag — request it in your report; `J6` applies it. Automating the release command is `6-F`'s job, not this lane's: `6-E` only has to prove the command works by hand, once.
+
+---
+
+## Lane 6-F — CI/CD pipeline
+
+**Agent** infra-engineer · **`6-F1`** depends on `J4` (wave 8) · **`6-F2`** depends on `J5` and reads `6-E`'s `specs/lanes/deployment.md` (wave 9) · **Parallel with** `6-E`, `6-A1` (wave 8); `6-A2`, `6-B`, `6-C` (wave 9)
+
+**Mission** Turn `6-E`'s "one repeatable command" into something that runs itself: every push and PR proves the suites still pass, and a merge to `main` redeploys `multiprice.farealahmed.com` without a human re-typing `6-E`'s release command. This is a scope reversal — the plan through Phase 0 explicitly said no CI pipeline; the human has since asked for one, modeled on `multip`'s already-working workflows (`../multip/.github/workflows/{backend,frontend}-ci.yml`) but adapted to this repo's single public hostname and its actual (smaller) npm script set — `multip`'s `lint`/`format`/`depcruise`/`check:boundaries` steps do not exist here and are **not** added as a side effect of this lane; only what `package.json` already has.
+
+**Owns** `.github/workflows/**`, `specs/lanes/6-f.md`
+
+**Reads, never edits** `compose.yml`, `apps/*/Dockerfile`, `infra/**`, `specs/lanes/deployment.md`, both apps' `package.json`, root `.nvmrc`
+
+**Build**
+
+`6-F1` (wave 8) — CI, two path-filtered workflows so a frontend-only change never rebuilds the backend and vice versa (`multip`'s pattern, minus the lint/format/depcruise steps it has and this repo doesn't):
+1. `.github/workflows/backend-ci.yml` — triggers on `push`/`pull_request` touching `apps/backend/**` or `infra/**`. `actions/setup-node@v4` off the root `.nvmrc` (Node 22), `npm ci`, `npm run typecheck`, `npm test`, all inside `apps/backend`.
+2. `.github/workflows/frontend-ci.yml` — same trigger shape for `apps/frontend/**` or `infra/**`; `npm ci`, `npm run typecheck`, `npm test`, `npm run build`.
+3. Both jobs `docker build` their app's existing Dockerfile, `docker save | gzip`, upload as a workflow artifact (`retention-days: 1`) — the same artifact `6-F2`'s deploy job downloads, so CI and CD share one build rather than building twice.
+4. Report which check names to require in GitHub's branch-protection settings on `farealahmed/multiprice`. **You cannot turn on branch protection yourself** — repo settings are the human's, not a committable file — name them explicitly in your report.
+
+`6-F2` (wave 9) — CD, mirroring `multip`'s SSH-tarball deploy job exactly, pointed at the reused droplet:
+5. A `deploy` job in each workflow, `needs: ci`, gated on `github.ref == 'refs/heads/main' && github.event_name == 'push'`: download the artifact, SSH in with `DEPLOY_SSH_KEY`, `rsync` `infra/` and the image tarball to the droplet, then over that same SSH connection: create `infra/.env` from `.env.production.example` if missing (never overwrite an existing one — `multip`'s `--delete` mistake deleted a live `.env` mid-deploy; do not repeat it), `docker load`, `docker compose -f infra/compose.yml up -d --no-build`.
+6. Smoke test: curl-retry loop (`multip`'s pattern, ~10 tries / 5s apart) against `https://multiprice.farealahmed.com/api/health` for the backend job and `https://multiprice.farealahmed.com/` for the frontend job — both go through the single public hostname, since the backend has no subdomain of its own here.
+7. Secrets referenced as `${{ secrets.NAME }}`: `DEPLOY_SSH_KEY`, `DEPLOY_HOST` (`multiprice.farealahmed.com`), `DEPLOY_USER` (the droplet's existing `deploy` user, reused from `multip`). **You cannot add the secret values yourself** — list these exact names in your report; the human sets them (`gh secret set NAME --repo farealahmed/multiprice < path/to/value`), not you.
+8. Do not automate the browser smoke test from `6-E`'s Done criteria — the curl health check above is enough for CD; the sign-up → `421.50` → finalize walkthrough stays a manual step in `J6`.
+
+**Done when** opening a PR shows both CI checks running and blocking merge on failure, and a push to `main` (once branch protection and secrets are configured by the human) redeploys `multiprice.farealahmed.com` — verified once by triggering it and confirming the URL served a new build.
+
+**Guardrails** No application source changes, no changes to `6-E`'s `infra/**` — read it, deploy against it, do not rewrite it. One CI provider (GitHub Actions). Do not replace `J6`'s manual redeploy-and-verify step; automate the mechanism, not the final human check. Do not port `multip`'s two-public-subdomain Caddy pattern — one vhost, frontend only.
 
 ---
 
 ## Join J6 — Submission
 
-1. All lanes reported. Full suite green in both apps.
+1. All lanes reported, including `6-F`. Full suite green in both apps, and the CI workflow itself green on this branch's latest push.
 2. `e2e/journey.cy.ts` — the reviewer's core journey in one flow: sign up → create a document → enter the PDF's sample lines → see `421.50` → finalize → fail to edit → run a report that reconciles. This proves the documented setup path end to end; it does not re-test API edge cases that faster suites already cover.
 3. Fresh clone in a temp directory, follow the README literally, and reproduce `421.50` from it alone. Anything you had to know that the README does not say goes back to 6-A.
-4. **Redeploy the final build** using `6-E`'s documented release command, and confirm on the live URL: signup works, the sample document totals `421.50`, finalize locks it, and the report reconciles. `6-E` deployed an earlier build in wave 8; this is the one that gets submitted.
+4. **Redeploy the final build.** If `6-F2`'s pipeline is wired and armed (branch protection and secrets configured by the human), merging this phase's PR to `main` triggers it; otherwise run `6-E`'s documented release command by hand. Either way, confirm on the live URL: signup works, the sample document totals `421.50`, finalize locks it, and the report reconciles. `6-E` deployed an earlier build in wave 8; this is the one that gets submitted.
 5. Commit `chore(J6): join phase 6`.
 
 **Demo** A stranger clones, runs `docker compose up`, signs up, reproduces `421.50`, finalizes, fails to edit, runs a report — from the README alone.
