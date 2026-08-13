@@ -21,6 +21,8 @@ const docs: DocumentSummary[] = [
       totalTax: 120,
       grandTotal: 5220,
     },
+    createdAt: '2026-07-15T00:00:00.000Z',
+    updatedAt: '2026-07-15T00:00:00.000Z',
   },
   {
     id: 'doc-2',
@@ -34,6 +36,8 @@ const docs: DocumentSummary[] = [
       totalTax: 154.58,
       grandTotal: 2206.78,
     },
+    createdAt: '2026-07-28T00:00:00.000Z',
+    updatedAt: '2026-07-28T00:00:00.000Z',
   },
 ];
 

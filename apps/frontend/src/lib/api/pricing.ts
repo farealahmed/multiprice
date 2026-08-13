@@ -8,7 +8,7 @@ type Waiter = {
   reject: (error: unknown) => void;
 };
 
-let timer: NodeJS.Timeout | undefined;
+let timer: ReturnType<typeof setTimeout> | undefined;
 let waiters: Waiter[] = [];
 let latestLines: LineInput[] = [];
 // Incremented each time a request is actually issued; a settling response whose

@@ -219,11 +219,13 @@ Serves no evaluation row directly; makes every later phase demonstrable.
 
 ## Phase 6 — README and submission
 
-**Lanes** [`docs/phases/phase-6-issue-7.md`](phases/phase-6-issue-7.md) — 6-A1/6-A2 README · 6-E deployment · 6-B seed · 6-C quality pass · J6 · 6-D printable view · J7
+**Lanes** [`docs/phases/phase-6-issue-7.md`](phases/phase-6-issue-7.md) — 6-A1/6-A2 README · 6-E deployment · 6-F1/6-F2 CI/CD · 6-B seed · 6-C quality pass · J6 · 6-D printable view · J7
 
 **Retires: Communication** — the row most often lost by people whose code was fine.
 
 **README** Prerequisites and step-by-step setup; the calculation and rounding policy **with the PDF's worked example**; finalize/immutability rules; assumptions and tradeoffs, including the two policy calls above; what you'd improve before production; the live URL.
+
+**CI/CD** Reverses the "no CI" default assumed through Phase 0. GitHub Actions runs both apps' suites on every push and pull request; merging to `main` redeploys the live URL by re-running `6-E`'s documented release command — the pipeline automates what `6-E` already proved works by hand, it does not replace it. Deployment target is a dedicated DigitalOcean droplet behind Caddy and Cloudflare DNS, at `multiprice.farealahmed.com` — one public hostname, since this app's frontend already proxies `/api/*` internally.
 
 **Backend** A seed script so a reviewer can see data immediately. Generate OpenAPI only if it falls naturally out of the chosen Fastify schema setup; do not add a client-generation or documentation pipeline.
 

@@ -243,11 +243,11 @@ A gate never shares a wave with the lanes it blocks, and a join runs alone.
 | 5 | `3-A` documents backend · `3-B` validation & isolation tests · `3-C` documents list · `3-D` editor persistence **[4]** | `J3` |
 | 6 | `G4` lifecycle contract · `G5` report contract **[2]** | — |
 | 7 | `4-A` finalize+guard · `4-B` immutability tests · `4-C` lock UI · `5-B` report UI **[4]** | `J4` |
-| 8 | `5-A` report aggregation · `4-D` duplicate (only if J4 green) · `6-A1` README draft · `6-E` deployment **[4]** | `J5` |
-| 9 | `6-A2` README final · `6-B` seed script · `6-C` quality pass **[3]** | `J6` |
+| 8 | `5-A` report aggregation · `4-D` duplicate (only if J4 green) · `6-A1` README draft · `6-E` deployment · `6-F1` CI workflow **[5]** | `J5` |
+| 9 | `6-A2` README final · `6-B` seed script · `6-C` quality pass · `6-F2` CD wiring **[4]** | `J6` |
 | 10 | `6-D` printable view (only if J6 green) **[1]** | `J7` |
 
-Ten waves, nineteen lanes, peak four terminals. Three things worth noticing:
+Ten waves, twenty-one lanes, peak five terminals. Four things worth noticing:
 
 **`G0` runs alone.** It creates the files every other gate builds beside, so nothing can run next to it. It is short — config and two type files.
 
@@ -256,6 +256,8 @@ Ten waves, nineteen lanes, peak four terminals. Three things worth noticing:
 **Deployment is a lane, not an assumption.** `6-E` runs in wave 8 because `6-A2` needs a URL to put in the README and `J6` needs a live build to verify. It is the one lane that cannot start without facts only the human has — provider, database, hostname, secrets — and its brief lists them.
 
 **`6-A` is split across two waves.** `6-A1` drafts from the frozen contracts in wave 8; `6-A2` finalizes against landed behaviour after `J5`. A lane cannot be simultaneously blocked on a join and running before it — the earlier schedule claimed both.
+
+**`6-F` is split the same way, for the same reason.** `6-F1` wires the CI half — lint, typecheck, test, build on every push and PR — which needs nothing beyond the suites `J4` already proved, so it runs in wave 8 alongside `6-E`. `6-F2` wires the CD half — deploy on merge to `main` — which needs `6-E`'s release command to exist first, so it waits for `J5` like `6-A2`, `6-B`, and `6-C` do. `0-C` and `6-E`'s briefs both said "no CI pipeline" when this plan was written; that was a scope call for the take-home, not a technical constraint, and it is reversed as of this revision.
 
 **Wave 3 has one lane, and that is correct.** `1-B` imports `src/pricing` directly, so it cannot even typecheck until `1-A` lands. A test lane can be written blind against a contract; a lane that *calls* another lane's module cannot. Do not be tempted to run them together.
 

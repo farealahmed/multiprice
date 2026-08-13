@@ -1,0 +1,155 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/backend
+    steps:
+      # actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      # actions/setup-node@v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/backend/package-lock.json
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: docker build --platform linux/amd64 -t multiprice-backend:local .
+      - run: docker save multiprice-backend:local | gzip > backend-image.tar.gz
+
+      # actions/upload-artifact@v4.6.2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: backend-image
+          path: apps/backend/backend-image.tar.gz
+          retention-days: 1
+
+  frontend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      # actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      # actions/setup-node@v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: docker build --platform linux/amd64 --build-arg BACKEND_ORIGIN=http://backend:3001 -t multiprice-frontend:local .
+      - run: docker save multiprice-frontend:local | gzip > frontend-image.tar.gz
+
+      # actions/upload-artifact@v4.6.2
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: frontend-image
+          path: apps/frontend/frontend-image.tar.gz
+          retention-days: 1
+
+  deploy:
+    needs: [backend-ci, frontend-ci]
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    concurrency:
+      group: multiprice-production
+      cancel-in-progress: true
+    steps:
+      # actions/checkout@v4.2.2
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      # actions/download-artifact@v4.3.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: backend-image
+          path: apps/backend
+
+      # actions/download-artifact@v4.3.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: frontend-image
+          path: apps/frontend
+
+      - name: Configure verified deploy host
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${{ secrets.DEPLOY_SSH_KEY }}"
+          test -n "${{ secrets.DEPLOY_HOST }}"
+          test -n "${{ secrets.DEPLOY_USER }}"
+          test -n "${{ secrets.DEPLOY_KNOWN_HOSTS }}"
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          printf '%s\n' "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/known_hosts
+
+      - name: Copy deploy assets to droplet
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes -i ~/.ssh/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+            'mkdir -p ~/multiprice/infra'
+          rsync -az -e "ssh -o BatchMode=yes -i ~/.ssh/deploy_key" \
+            infra/ "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:~/multiprice/infra/"
+          rsync -az -e "ssh -o BatchMode=yes -i ~/.ssh/deploy_key" \
+            apps/backend/backend-image.tar.gz "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:~/multiprice/backend-image.tar.gz"
+          rsync -az -e "ssh -o BatchMode=yes -i ~/.ssh/deploy_key" \
+            apps/frontend/frontend-image.tar.gz "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:~/multiprice/frontend-image.tar.gz"
+
+      - name: Load images and restart the stack
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes -i ~/.ssh/deploy_key "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+            'flock ~/multiprice/deploy.lock bash -seuo pipefail' <<'REMOTE'
+          cd ~/multiprice
+          if [ ! -f infra/.env ]; then
+            cp infra/.env.example infra/.env
+            chmod 600 infra/.env
+            echo "infra/.env created from the example. Set JWT_SECRET before the stack can boot."
+          fi
+          docker load < backend-image.tar.gz
+          docker load < frontend-image.tar.gz
+          rm -f backend-image.tar.gz frontend-image.tar.gz
+          docker compose -f infra/compose.yml up -d --no-build
+          REMOTE
+
+      - name: Smoke test public routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          for path in /api/health /; do
+            for i in $(seq 1 10); do
+              if curl -fsS "https://${{ secrets.DEPLOY_HOST }}${path}"; then
+                break
+              fi
+              if [ "$i" -eq 10 ]; then
+                echo "Smoke test failed for ${path}"
+                exit 1
+              fi
+              echo "${path} is not ready yet; retrying..."
+              sleep 5
+            done
+          done
