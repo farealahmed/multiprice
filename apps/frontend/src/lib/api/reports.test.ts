@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError, apiFetch } from './client';
-import { summary } from './reports';
+import { summary, view } from './reports';
 
 vi.mock('./client', () => ({
   ApiError: class ApiError extends Error {
@@ -42,6 +42,14 @@ describe('reports API client', () => {
     await summary();
 
     expect(apiFetchMock).toHaveBeenCalledWith('/api/v1/reports/summary');
+  });
+
+  it('calls the consistent report view endpoint with the selected range', async () => {
+    await view({ from: '2026-07-01', to: '2026-07-31' });
+
+    expect(apiFetchMock).toHaveBeenCalledWith(
+      '/api/v1/reports/view?from=2026-07-01&to=2026-07-31',
+    );
   });
 
   it('propagates ApiError unchanged', async () => {

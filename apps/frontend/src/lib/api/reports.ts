@@ -1,24 +1,26 @@
 import { apiFetch } from './client';
-import type { ReportSummary } from './types/report';
+import type { DateRangeQuery, ReportSummary, ReportView } from './types/report';
 
-/**
- * Fetches the summary report for the given inclusive issueDate range.
- *
- * Both ends are optional at the HTTP level, but the report UI always supplies
- * them. When both are absent the bare path is called.
- */
-export function summary(from?: string, to?: string): Promise<ReportSummary> {
+function withRange(path: string, range: DateRangeQuery): string {
   const query = new URLSearchParams();
 
-  if (from) {
-    query.set('from', from);
+  if (range.from) {
+    query.set('from', range.from);
   }
-  if (to) {
-    query.set('to', to);
+  if (range.to) {
+    query.set('to', range.to);
   }
 
   const queryString = query.toString();
-  return apiFetch<ReportSummary>(
-    `/api/v1/reports/summary${queryString ? `?${queryString}` : ''}`,
-  );
+  return `${path}${queryString ? `?${queryString}` : ''}`;
+}
+
+/** Fetches the summary report for the given inclusive issue-date range. */
+export function summary(from?: string, to?: string): Promise<ReportSummary> {
+  return apiFetch<ReportSummary>(withRange('/api/v1/reports/summary', { from, to }));
+}
+
+/** Fetches report totals and rows from one server-side aggregation. */
+export function view(range: DateRangeQuery): Promise<ReportView> {
+  return apiFetch<ReportView>(withRange('/api/v1/reports/view', range));
 }

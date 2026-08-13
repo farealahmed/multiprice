@@ -12,6 +12,7 @@ changing.
 | Method | Path | Auth | Purpose |
 |----|----|----|----|
 | `GET` | `/api/v1/reports/summary?from=&to=` | session | Aggregate report over an `issueDate` range |
+| `GET` | `/api/v1/reports/view?from=&to=` | session | Return a consistent report summary and document rows from one aggregation |
 | `GET` | `/api/v1/documents?from=&to=` | session | List the caller's documents, optionally scoped to the same `issueDate` range |
 
 All endpoints are same-origin; the frontend client calls relative `/api/v1/...`
@@ -43,7 +44,16 @@ not 404.
 `DATE_RANGE_INVERTED` if `from > to`. Both surface through the envelope's
 `details[]` with the offending parameter's path.
 
-### 1.2 `GET /api/v1/documents?from=&to=` *(amended)*
+
+### 1.2 `GET /api/v1/reports/view?from=&to=`
+
+Uses the same optional range parameters and validation rules as the summary
+endpoint. Its response contains the `ReportSummary` fields above plus
+`documents: DocumentSummary[]`, produced by one Mongo aggregation with a shared
+matched input stream. The summary figures and returned rows therefore describe
+the same report view even when documents are written concurrently.
+
+### 1.3 `GET /api/v1/documents?from=&to=` *(amended)*
 
 **Query parameters:** same optional `from`/`to` shape as the report endpoint,
 validated through the same `dateRangeQuerySchema`.

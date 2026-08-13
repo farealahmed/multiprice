@@ -6,7 +6,7 @@ import { createReportsRepository, type ReportAggregate } from './reports.reposit
 
 function createFakeCollection() {
   const aggregatePipelines: unknown[] = [];
-  let aggregateResult: ReportAggregate[] = [];
+  let aggregateResult: unknown[] = [];
 
   const collection = {
     aggregate: <T>(_pipeline: unknown[]) => {
@@ -20,7 +20,7 @@ function createFakeCollection() {
   return {
     collection,
     aggregatePipelines,
-    setAggregateResult(result: ReportAggregate[]) {
+    setAggregateResult(result: unknown[]) {
       aggregateResult = result;
     },
   };
@@ -120,5 +120,33 @@ describe('reports.repository', () => {
     expect(result.totalGrandTotal).toBe(0);
     expect(result.totalTax).toBe(0);
     expect(result.totalDiscount).toBe(0);
+  });
+
+  it('derives report totals and rows from one $facet aggregation', async () => {
+    const { collection, aggregatePipelines } = createFakeCollection();
+    const reports = createReportsRepository(createFakeDb(collection));
+
+    await reports.view('owner-1', { from: '2026-07-01', to: '2026-07-31' });
+
+    const pipeline = aggregatePipelines[0] as Array<{ $match?: unknown; $facet?: unknown }>;
+    expect(pipeline).toHaveLength(2);
+    expect(pipeline[0]?.$match).toEqual({
+      ownerId: 'owner-1',
+      issueDate: { $gte: '2026-07-01', $lte: '2026-07-31' },
+    });
+    expect(pipeline[1]?.$facet).toEqual({
+      summary: [
+        {
+          $group: {
+            _id: null,
+            documentCount: { $sum: 1 },
+            totalGrandTotal: { $sum: '$totals.grandTotal' },
+            totalTax: { $sum: '$totals.totalTax' },
+            totalDiscount: { $sum: '$totals.totalDiscount' },
+          },
+        },
+      ],
+      documents: [{ $sort: { issueDate: -1, createdAt: -1 } }],
+    });
   });
 });

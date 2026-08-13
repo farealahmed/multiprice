@@ -1,6 +1,8 @@
 // Hand-written mirror of apps/backend/src/contracts/report.ts — keep in sync by hand.
 // Rule 1 of the phase plan: duplication is deliberate; do not introduce code generation.
 
+import type { DocumentSummary } from './document';
+
 export const DATE_RANGE_INVALID = 'DATE_RANGE_INVALID';
 export const DATE_RANGE_INVERTED = 'DATE_RANGE_INVERTED';
 
@@ -15,6 +17,10 @@ export type ReportSummary = {
   totalGrandTotal: number;
   totalTax: number;
   totalDiscount: number;
+};
+
+export type ReportView = ReportSummary & {
+  documents: DocumentSummary[];
 };
 
 export type DateRangeQuery = {

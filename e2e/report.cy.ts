@@ -113,15 +113,12 @@ describe('report — seeded data reconciles cards to table rows', () => {
     // so the seeded documents remain reachable.
     cy.request('POST', '/auth/login', { email: testEmail, password: PASSWORD });
 
-    cy.intercept('GET', '/api/v1/reports/summary?*').as('reportSummary');
-    cy.intercept('GET', '/api/v1/documents?*').as('documentsList');
+    cy.intercept('GET', '/api/v1/reports/view?*').as('reportView');
     cy.visit('/report');
   });
 
   function assertReconciliation(monthLabel: string) {
-    // Wait for both the summary and the document-list fetch to finish.
-    cy.wait('@reportSummary').its('response.statusCode').should('eq', 200);
-    cy.wait('@documentsList').its('response.statusCode').should('eq', 200);
+    cy.wait('@reportView').its('response.statusCode').should('eq', 200);
 
     sumColumn(7).then((grandTotal) => {
       readCardValue('Sum of grand totals').should(

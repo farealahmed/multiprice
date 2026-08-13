@@ -4,9 +4,8 @@ import { cleanup, render, screen, waitFor, fireEvent } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as reports from '@/lib/api/reports';
-import * as documents from '@/lib/api/documents';
 import { ApiError } from '@/lib/api/client';
-import type { ReportSummary } from '@/lib/api/types/report';
+import type { ReportSummary, ReportView } from '@/lib/api/types/report';
 import type { DocumentSummary } from '@/lib/api/types/document';
 
 import ReportPage from './page';
@@ -16,15 +15,10 @@ vi.mock('@/components/shell/Topbar', () => ({
 }));
 
 vi.mock('@/lib/api/reports', () => ({
-  summary: vi.fn(),
+  view: vi.fn(),
 }));
 
-vi.mock('@/lib/api/documents', () => ({
-  list: vi.fn(),
-}));
-
-const summaryMock = vi.mocked(reports.summary);
-const listMock = vi.mocked(documents.list);
+const viewMock = vi.mocked(reports.view);
 
 const summary: ReportSummary = {
   from: '2026-07-01',
@@ -54,10 +48,11 @@ const docs: DocumentSummary[] = [
   },
 ];
 
+const report: ReportView = { ...summary, documents: docs };
+
 describe('ReportPage', () => {
   beforeEach(() => {
-    summaryMock.mockResolvedValue(summary);
-    listMock.mockResolvedValue(docs);
+    viewMock.mockResolvedValue(report);
   });
 
   afterEach(() => {
@@ -70,8 +65,7 @@ describe('ReportPage', () => {
 
     await waitFor(() => expect(screen.getByText('Sum of grand totals')).toBeTruthy());
 
-    expect(summaryMock).toHaveBeenCalledTimes(1);
-    expect(listMock).toHaveBeenCalledTimes(1);
+    expect(viewMock).toHaveBeenCalledTimes(1);
   });
 
   it('renders the stat cards and table when data is present', async () => {
@@ -84,8 +78,14 @@ describe('ReportPage', () => {
   });
 
   it('shows an empty state echoing the range when no documents match', async () => {
-    summaryMock.mockResolvedValue({ ...summary, documentCount: 0, totalGrandTotal: 0, totalTax: 0, totalDiscount: 0 });
-    listMock.mockResolvedValue([]);
+    viewMock.mockResolvedValue({
+      ...report,
+      documentCount: 0,
+      totalGrandTotal: 0,
+      totalTax: 0,
+      totalDiscount: 0,
+      documents: [],
+    });
 
     render(<ReportPage />);
 
@@ -95,7 +95,7 @@ describe('ReportPage', () => {
   });
 
   it('shows an error message with a retry button when the API fails', async () => {
-    summaryMock.mockRejectedValue(new ApiError('INTERNAL_ERROR', 'Server error.'));
+    viewMock.mockRejectedValue(new ApiError('INTERNAL_ERROR', 'Server error.'));
 
     render(<ReportPage />);
 
@@ -103,9 +103,9 @@ describe('ReportPage', () => {
     expect(screen.getByRole('button', { name: /Try again/i })).toBeTruthy();
   });
 
-  it('re-fires both requests when retry is clicked', async () => {
-    summaryMock.mockRejectedValueOnce(new ApiError('INTERNAL_ERROR', 'Server error.'));
-    summaryMock.mockResolvedValueOnce(summary);
+  it('re-fires the report view request when retry is clicked', async () => {
+    viewMock.mockRejectedValueOnce(new ApiError('INTERNAL_ERROR', 'Server error.'));
+    viewMock.mockResolvedValueOnce(report);
 
     render(<ReportPage />);
 
@@ -113,7 +113,6 @@ describe('ReportPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Try again/i }));
 
-    await waitFor(() => expect(summaryMock).toHaveBeenCalledTimes(2));
-    expect(listMock).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(viewMock).toHaveBeenCalledTimes(2));
   });
 });

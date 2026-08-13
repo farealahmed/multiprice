@@ -14,8 +14,14 @@ export interface ReportAggregate {
   totalDiscount: number;
 }
 
+export interface ReportViewAggregate {
+  summary: ReportAggregate[];
+  documents: StoredDocument[];
+}
+
 export interface ReportsRepository {
   summarize(ownerId: string, range?: { from?: string; to?: string }): Promise<ReportAggregate>;
+  view(ownerId: string, range?: { from?: string; to?: string }): Promise<ReportViewAggregate>;
 }
 
 export function createReportsRepository(db: Db): ReportsRepository {
@@ -53,6 +59,41 @@ export function createReportsRepository(db: Db): ReportsRepository {
       }
 
       return result[0]!;
+    },
+
+    view: async (ownerId, range) => {
+      const result = await collection
+        .aggregate<ReportViewAggregate>([
+          {
+            $match: {
+              ownerId,
+              ...buildIssueDateFilter(range),
+            },
+          },
+          {
+            $facet: {
+              summary: [
+                {
+                  $group: {
+                    _id: null,
+                    documentCount: { $sum: 1 },
+                    totalGrandTotal: { $sum: '$totals.grandTotal' },
+                    totalTax: { $sum: '$totals.totalTax' },
+                    totalDiscount: { $sum: '$totals.totalDiscount' },
+                  },
+                },
+              ],
+              documents: [
+                {
+                  $sort: { issueDate: -1, createdAt: -1 },
+                },
+              ],
+            },
+          },
+        ])
+        .toArray();
+
+      return result[0] ?? { summary: [], documents: [] };
     },
   };
 }

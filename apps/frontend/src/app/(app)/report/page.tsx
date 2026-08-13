@@ -9,7 +9,6 @@ import { RangePicker, type DateRange } from '@/components/report/RangePicker';
 import { StatCards } from '@/components/report/StatCards';
 import { ReportTable } from '@/components/report/ReportTable';
 import * as reports from '@/lib/api/reports';
-import * as documents from '@/lib/api/documents';
 import { ApiError } from '@/lib/api/client';
 import type { ReportSummary } from '@/lib/api/types/report';
 import type { DocumentSummary } from '@/lib/api/types/document';
@@ -43,11 +42,12 @@ export default function ReportPage() {
   const load = useCallback(async (range: DateRange) => {
     setPageState({ phase: 'loading' });
     try {
-      const [summary, docs] = await Promise.all([
-        reports.summary(range.from, range.to),
-        documents.list(range),
-      ]);
-      setPageState({ phase: 'ok', summary, docs });
+      const report = await reports.view(range);
+      setPageState({
+        phase: 'ok',
+        summary: report,
+        docs: report.documents,
+      });
     } catch (err) {
       setPageState({
         phase: 'error',

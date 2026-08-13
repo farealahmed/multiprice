@@ -16,6 +16,7 @@ import type {
 } from '../domain/document.ts';
 import type {
   DocumentResponse,
+  DocumentSummary,
   LineItemInput,
   LineItemResponse,
   DocumentTotals,
@@ -117,6 +118,20 @@ function toTotalsResponse(totals: StoredTotals): DocumentTotals {
     totalDiscount: totals.totalDiscount / 100,
     totalTax: totals.totalTax / 100,
     grandTotal: totals.grandTotal / 100,
+  };
+}
+
+/** Maps a persisted StoredDocument to the list/report wire representation. */
+export function toDocumentSummary(stored: StoredDocument): DocumentSummary {
+  return {
+    id: stored._id.toHexString(),
+    title: stored.title,
+    customer: stored.customer,
+    issueDate: stored.issueDate,
+    status: stored.status,
+    totals: toTotalsResponse(stored.totals),
+    createdAt: stored.createdAt.toISOString(),
+    updatedAt: stored.updatedAt.toISOString(),
   };
 }
 

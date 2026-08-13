@@ -1,7 +1,9 @@
+import { ObjectId } from 'mongodb';
 import { describe, expect, it, vi } from 'vitest';
-import { summarizeReports } from './reports.ts';
-import type { ReportsRepository } from '../persistence/reports.repository.ts';
-import type { ReportAggregate } from '../persistence/reports.repository.ts';
+
+import { getReportView, summarizeReports } from './reports.ts';
+import type { StoredDocument } from '../domain/document.ts';
+import type { ReportAggregate, ReportsRepository } from '../persistence/reports.repository.ts';
 
 function createFakeReportsRepository(
   aggregate: ReportAggregate,
@@ -16,6 +18,7 @@ function createFakeReportsRepository(
       calls.push([ownerId, range]);
       return aggregate;
     },
+    view: async () => ({ summary: [], documents: [] }),
   };
 
   return { repository, calls };
@@ -89,5 +92,55 @@ describe('reports service — summarizeReports', () => {
 
     expect(calls).toHaveLength(1);
     expect(calls[0]).toEqual(['owner-42', range]);
+  });
+
+  it('maps totals and rows from the same repository view result', async () => {
+    const id = new ObjectId();
+    const stored: StoredDocument = {
+      _id: id,
+      ownerId: 'owner-1',
+      title: 'July invoice',
+      customer: 'Acme',
+      issueDate: '2026-07-15',
+      status: 'draft',
+      lines: [],
+      totals: { subtotal: 10_000, totalDiscount: 500, totalTax: 950, grandTotal: 10_450 },
+      createdAt: new Date('2026-07-15T00:00:00.000Z'),
+      updatedAt: new Date('2026-07-15T00:00:00.000Z'),
+    };
+    const repository: ReportsRepository = {
+      summarize: async () => {
+        throw new Error('summary must not be queried separately');
+      },
+      view: async () => ({
+        summary: [{
+          documentCount: 1,
+          totalGrandTotal: 10_450,
+          totalTax: 950,
+          totalDiscount: 500,
+        }],
+        documents: [stored],
+      }),
+    };
+
+    const result = await getReportView(
+      'owner-1',
+      { from: '2026-07-01', to: '2026-07-31' },
+      repository,
+    );
+
+    expect(result).toMatchObject({
+      from: '2026-07-01',
+      to: '2026-07-31',
+      documentCount: 1,
+      totalGrandTotal: 104.5,
+      totalTax: 9.5,
+      totalDiscount: 5,
+      documents: [{
+        id: id.toHexString(),
+        title: 'July invoice',
+        totals: { subtotal: 100, totalDiscount: 5, totalTax: 9.5, grandTotal: 104.5 },
+      }],
+    });
   });
 });
