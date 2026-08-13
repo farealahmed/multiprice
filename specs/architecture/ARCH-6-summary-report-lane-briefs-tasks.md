@@ -629,7 +629,7 @@ establishes. Treat this as a deliverable, not incidental coverage.
 
 ## Task T7: Frontend API client
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** tdd
 > **Effort:** xs
 > **Priority:** high

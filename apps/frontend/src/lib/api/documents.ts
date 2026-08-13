@@ -6,6 +6,7 @@ import type {
   LineItemInput,
   UpdateDocumentInput,
 } from './types/document';
+import type { DateRangeQuery } from './types/report';
 
 type DocumentRequestInput = CreateDocumentInput | LineItemInput | UpdateDocumentInput;
 
@@ -15,8 +16,24 @@ const jsonRequest = (input: DocumentRequestInput, method: 'POST' | 'PATCH'): Req
   body: JSON.stringify(input),
 });
 
-export function list(): Promise<DocumentSummary[]> {
-  return apiFetch<DocumentSummary[]>('/api/v1/documents');
+export function list(range?: DateRangeQuery): Promise<DocumentSummary[]> {
+  if (!range) {
+    return apiFetch<DocumentSummary[]>('/api/v1/documents');
+  }
+
+  const query = new URLSearchParams();
+
+  if (range.from) {
+    query.set('from', range.from);
+  }
+  if (range.to) {
+    query.set('to', range.to);
+  }
+
+  const queryString = query.toString();
+  return apiFetch<DocumentSummary[]>(
+    `/api/v1/documents${queryString ? `?${queryString}` : ''}`,
+  );
 }
 
 export function get(id: string): Promise<DocumentResponse> {
