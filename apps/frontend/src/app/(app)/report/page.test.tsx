@@ -37,6 +37,8 @@ const docs: DocumentSummary[] = [
     issueDate: '2026-07-15',
     status: 'finalized',
     totals: { subtotal: 5400, totalDiscount: 300, totalTax: 120, grandTotal: 5220 },
+    createdAt: '2026-07-15T00:00:00.000Z',
+    updatedAt: '2026-07-15T00:00:00.000Z',
   },
   {
     id: 'doc-2',
@@ -45,6 +47,8 @@ const docs: DocumentSummary[] = [
     issueDate: '2026-07-28',
     status: 'finalized',
     totals: { subtotal: 2154, totalDiscount: 101.8, totalTax: 154.58, grandTotal: 2206.78 },
+    createdAt: '2026-07-28T00:00:00.000Z',
+    updatedAt: '2026-07-28T00:00:00.000Z',
   },
 ];
 

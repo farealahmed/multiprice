@@ -1,0 +1,48 @@
+name: frontend-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/frontend/**"
+      - "infra/**"
+      - ".github/workflows/frontend-ci.yml"
+  pull_request:
+    paths:
+      - "apps/frontend/**"
+      - "infra/**"
+      - ".github/workflows/frontend-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: apps/frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+      # Built here, on the runner, so the droplet never needs npm/next build.
+      # 6-F2 adds the deploy job once 6-E's infra/ exists to deploy against.
+      - run: docker build -t multiprice-frontend:local .
+      - run: docker save multiprice-frontend:local | gzip > frontend-image.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-image
+          path: apps/frontend/frontend-image.tar.gz
+          retention-days: 1
