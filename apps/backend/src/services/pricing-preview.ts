@@ -26,7 +26,7 @@ export class PricingPreviewError extends Error {
   }
 }
 
-function toEngineLine(line: LineInput): EngineLineInput {
+export function toEngineLine(line: LineInput): EngineLineInput {
   return {
     quantity: toThousandths(line.quantity),
     unitPrice: toCents(line.unitPrice),
@@ -40,7 +40,7 @@ function toEngineLine(line: LineInput): EngineLineInput {
   };
 }
 
-function fromEngineResult(result: EngineDocumentResult): DocumentResult {
+export function fromEngineResult(result: EngineDocumentResult): DocumentResult {
   return {
     lines: result.lines.map((line) => ({
       subtotal: fromCents(line.subtotal),
@@ -56,7 +56,7 @@ function fromEngineResult(result: EngineDocumentResult): DocumentResult {
   };
 }
 
-function findFailingLine(lines: readonly EngineLineInput[], code: PricingError['code']): number | null {
+export function findFailingLine(lines: readonly EngineLineInput[], code: PricingError['code']): number | null {
   for (const [index, line] of lines.entries()) {
     try {
       calculateLine(line);
