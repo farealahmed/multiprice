@@ -54,7 +54,7 @@ export default function HomePage() {
         <p className="kicker">System readiness</p>
         <h1>Connected by design.</h1>
         <p className="lede">
-          Tallymark keeps browser traffic same-origin while the service checks its database
+          MultiPrice keeps browser traffic same-origin while the service checks its database
           connection at the source.
         </p>
 

@@ -26,7 +26,7 @@ const roboto = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'Tallymark',
+  title: 'MultiPrice',
   description: 'Multi-rate pricing workspace',
 };
 
