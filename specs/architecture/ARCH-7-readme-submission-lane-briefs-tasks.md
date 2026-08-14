@@ -25,18 +25,24 @@ No parallelism needed — T2's Footprint (`README.md`) doesn't overlap T1's (fro
 > **Priority:** high
 > **Depends on:** None
 > **Satisfies REQs:** R9
-> **Footprint slice:** New: `apps/frontend/src/app/(app)/documents/[id]/print/page.tsx`, `apps/frontend/src/components/print/PrintDocument.tsx` (+ module CSS), `apps/frontend/src/styles/print.css`. Modified: `apps/frontend/src/app/(app)/documents/[id]/view/page.tsx` (add Print link).
+> **Footprint slice:** New: `apps/frontend/src/app/(app)/documents/[id]/print/page.tsx`, `apps/frontend/src/components/print/PrintDocument.tsx` (+ module CSS), `apps/frontend/src/styles/print.css`. Modified: `apps/frontend/src/components/lifecycle/DocumentView.tsx` (add Print link — see Description).
 > **High-risk areas touched:** None (all Areas of Impact in ARCH-7 for this task are Low risk)
 
 ### Description
 
 Add stretch goal 3 from the PDF: a printable view of a document, reachable from the existing read-only view. Renders the document (metadata, line items, totals) in a print-optimized layout based on `design/htmls/print.html`, with `@media print` rules so printing (or "Save as PDF" from the browser) produces a clean, chrome-free page. No backend changes — reuses the existing `GET /api/v1/documents/:id` response.
 
+**Implementation note (post-hoc):** the Print link was added to `DocumentView.tsx` — the shared
+component rendered by both `[id]/view/page.tsx` and `[id]/page.tsx`'s finalized branch — rather
+than to `[id]/view/page.tsx` directly as originally planned below. This reaches a finalized
+document from either route instead of just one, which is a better outcome than the original
+plan; every reference below to modifying `[id]/view/page.tsx` should be read as `DocumentView.tsx`.
+
 ### Verification Checklist
 
 1. **`/documents/:id/print` loads and renders without error for a finalized document** — navigate from `[id]/view`, confirm document metadata, line items, and totals all render. _(R9)_
 2. **Also works for a draft document** — no status gating on the print route, matching how `[id]/view` already behaves. _(R9)_
-3. **"Print" link is present and reachable from `[id]/view/page.tsx`**, navigating to the new route. _(R9, ARCH Change Footprint)_
+3. **"Print" link is present in `DocumentView.tsx`'s header and reachable from both `[id]/view/page.tsx` and `[id]/page.tsx` (finalized)**, navigating to the new route. _(R9, ARCH Change Footprint)_
 4. **Print preview at A4 renders cleanly** — app chrome (topbar/nav) hidden via `.no-print`, document header, prepared-for/document blocks, line-items table, and totals all legible with nothing clipped. _(R9)_
 5. **Print preview at Letter size renders cleanly** — same checks as #4. _(R9)_
 6. **No line-item row splits across a page break** — verified on a document with enough lines to approach a page boundary (15+ lines), `page-break-inside: avoid` applied. _(R9, ARCH forward stress-test)_
@@ -44,7 +50,7 @@ Add stretch goal 3 from the PDF: a printable view of a document, reachable from 
 8. **Totals in the print view exactly match `document.totals`** — rendered verbatim, not recomputed client-side (same discipline as `DocumentTotals`/`StatCards`). _(R9, ARCH Patterns & Conventions)_
 9. **Document numbering label is derived from existing data only** (`issueDate` + a slice of the document id) — confirmed by inspecting the diff: no new persisted field, no counter. _(R9, ARCH Decision A5)_
 10. **Empty document (zero lines) renders without crashing** — empty table body, totals still render (all zeros). _(R9, ARCH forward stress-test)_
-11. **`[id]/view/page.tsx`'s existing loading/error/retry states are unchanged** — only the Print link is added; verify by eye against current behavior. _(guards ARCH backward-regression risk for `[id]/view/page.tsx`)_
+11. **`DocumentView.tsx`'s existing rendering is unchanged apart from the added link** (metadata display, line items table, duplicate action, document totals) — verified by `DocumentView.test.tsx`'s existing tests all still passing plus a new test for the Print link's `href`. `[id]/view/page.tsx` and `[id]/page.tsx` (both unmodified, both render `DocumentView`) keep their own loading/error/retry states, verified by eye. _(guards ARCH backward-regression risk for `DocumentView.tsx`)_
 12. **`npm --prefix apps/frontend test` passes**, including a new component test for `PrintDocument` (see Testable Seams below).
 13. **`npm --prefix apps/frontend run typecheck` and `npm --prefix apps/frontend run build` both pass** — confirms the new route builds cleanly in a production build.
 
@@ -70,7 +76,8 @@ Add stretch goal 3 from the PDF: a printable view of a document, reachable from 
 
 - Do NOT add a PDF-generation library or any server-side PDF rendering (ARCH-7 Out of Scope, Decision A4).
 - Do NOT build configurable or concurrency-safe document numbering (ARCH-7 Out of Scope, Decision A5).
-- Do NOT modify `DocumentView.tsx` or `[id]/page.tsx` — `PrintDocument` is its own component; only `[id]/view/page.tsx` gets the added link.
+- Do NOT modify `[id]/page.tsx` or `[id]/view/page.tsx` directly — the Print link belongs in the shared `DocumentView.tsx` component both routes render, not duplicated into each route file.
+- `PrintDocument` stays its own component — do NOT fold its rendering into `DocumentView.tsx` or reuse `DocumentView.tsx` for the print layout; they're different layouts that happen to share the same totals-rendering discipline.
 - Do NOT add backend changes — no new endpoint, no schema change; reuse `GET /api/v1/documents/:id` as-is.
 - Do NOT gate the print route by document status.
 
@@ -83,11 +90,11 @@ Add stretch goal 3 from the PDF: a printable view of a document, reachable from 
 - A component test file for `PrintDocument` (and/or the print route), following this codebase's colocated-test convention
 
 **Modified files:** _(from ARCH-7 "Modified files / modules")_
-- `apps/frontend/src/app/(app)/documents/[id]/view/page.tsx` (add "Print" link to `/documents/:id/print`)
+- `apps/frontend/src/components/lifecycle/DocumentView.tsx` (add "Print" link to `/documents/:id/print`, alongside the existing Duplicate action)
 
 **Must NOT modify:** _(from ARCH-7 "Touched but not changed")_
 - `apps/frontend/src/lib/api/documents.ts` (`get()`) — reused as-is
-- `apps/frontend/src/components/lifecycle/DocumentView.tsx` — not reused or modified; `PrintDocument` is separate
+- `apps/frontend/src/app/(app)/documents/[id]/view/page.tsx`, `[id]/page.tsx` — not themselves modified; both render `DocumentView` and must keep working unchanged
 - Any backend file — no API changes needed
 
 ---
