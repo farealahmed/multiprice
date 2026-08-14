@@ -24,16 +24,25 @@ type PrintState =
 export default function PrintDocumentPage() {
   const params = useParams<{ id: string }>();
   const [state, setState] = useState<PrintState>({ phase: 'loading' });
-  const requestedIdRef = useRef<string | null>(null);
+  // A monotonic token per load() call, not just the id — the shared `preview()`
+  // debouncer (lib/api/pricing.ts) coalesces concurrent calls from anywhere in
+  // the app and resolves every waiter with whichever line array was requested
+  // last. Without this check *before* calling preview(), a late-arriving get()
+  // for a document the user has already navigated away from would still call
+  // preview() with its own (stale) lines, corrupting the shared debouncer's
+  // in-flight request and letting the *new* document's page commit the *old*
+  // document's computed line totals.
+  const generationRef = useRef(0);
 
   const load = useCallback(() => {
     const id = params.id;
-    requestedIdRef.current = id;
+    const generation = ++generationRef.current;
     setState({ phase: 'loading' });
 
     get(id).then(
-      (document) =>
-        preview(
+      (document) => {
+        if (generationRef.current !== generation) return;
+        return preview(
           document.lines.map((line) => ({
             quantity: line.quantity,
             unitPrice: line.unitPrice,
@@ -42,20 +51,21 @@ export default function PrintDocumentPage() {
           })),
         ).then(
           (result) => {
-            if (requestedIdRef.current !== id) return;
+            if (generationRef.current !== generation) return;
             setState({ phase: 'ok', document, result });
           },
           (error: unknown) => {
-            if (requestedIdRef.current !== id) return;
+            if (generationRef.current !== generation) return;
             setState({
               phase: 'error',
               message:
                 error instanceof ApiError ? error.message : 'Document could not be loaded.',
             });
           },
-        ),
+        );
+      },
       (error: unknown) => {
-        if (requestedIdRef.current !== id) return;
+        if (generationRef.current !== generation) return;
         setState({
           phase: 'error',
           message: error instanceof ApiError ? error.message : 'Document could not be loaded.',

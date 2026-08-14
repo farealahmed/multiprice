@@ -11,8 +11,10 @@ import type { DocumentResult } from '@/lib/api/types/pricing';
 
 import PrintDocumentPage from './page';
 
+const paramsMock = vi.fn(() => ({ id: 'document-1' }));
+
 vi.mock('next/navigation', () => ({
-  useParams: () => ({ id: 'document-1' }),
+  useParams: () => paramsMock(),
 }));
 
 vi.mock('@/components/shell/Topbar', () => ({
@@ -59,7 +61,33 @@ const result: DocumentResult = {
   grandTotal: 210,
 };
 
+const documentB: DocumentResponse = {
+  ...document,
+  id: 'document-2',
+  title: 'Office lease renewal',
+  lines: [
+    {
+      id: 'line-2',
+      description: 'Consulting',
+      quantity: 1,
+      unitPrice: 500,
+      discount: { type: 'none' },
+      taxPercent: 0,
+    },
+  ],
+};
+
+/** Deferred promise — lets a test resolve a mock's return value on its own schedule. */
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
+
 beforeEach(() => {
+  paramsMock.mockReturnValue({ id: 'document-1' });
   getMock.mockResolvedValue(document);
   previewMock.mockResolvedValue(result);
 });
@@ -80,6 +108,42 @@ describe('PrintDocumentPage', () => {
     expect(previewMock).toHaveBeenCalledWith([
       { quantity: 2, unitPrice: 100, discount: { type: 'none' }, taxPercent: 5 },
     ]);
+  });
+
+  it('never previews a stale document once navigation has moved to a new one', async () => {
+    // Simulates the real hazard: preview() is a shared, debounced singleton
+    // (lib/api/pricing.ts) that resolves every in-flight caller with whichever
+    // lines were requested last, regardless of which document asked. A's own
+    // get() resolving late must not be allowed to call preview() at all once
+    // the user has already navigated to B — otherwise A's late preview() call
+    // would corrupt the shared debouncer and B could render A's totals.
+    const getA = deferred<DocumentResponse>();
+    getMock.mockImplementationOnce(() => getA.promise);
+
+    const { rerender } = render(<PrintDocumentPage />);
+    await waitFor(() => expect(getMock).toHaveBeenCalledWith('document-1'));
+
+    // Navigate to document B before A's get() has resolved.
+    paramsMock.mockReturnValue({ id: 'document-2' });
+    getMock.mockResolvedValueOnce(documentB);
+    rerender(<PrintDocumentPage />);
+    await waitFor(() => expect(getMock).toHaveBeenCalledWith('document-2'));
+
+    // B's own request completes normally.
+    await waitFor(() => expect(previewMock).toHaveBeenCalledWith([
+      { quantity: 1, unitPrice: 500, discount: { type: 'none' }, taxPercent: 0 },
+    ]));
+    expect(await screen.findByText('Office lease renewal')).toBeTruthy();
+
+    // A's stale get() finally resolves — this must NOT trigger a preview()
+    // call for A's lines; if it did, it would poison the shared debouncer.
+    getA.resolve(document);
+    await new Promise((r) => setTimeout(r, 0));
+    expect(previewMock).not.toHaveBeenCalledWith([
+      { quantity: 2, unitPrice: 100, discount: { type: 'none' }, taxPercent: 5 },
+    ]);
+    expect(previewMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Office lease renewal')).toBeTruthy();
   });
 
   it('shows an error and retries after the document request fails', async () => {
