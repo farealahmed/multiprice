@@ -30,7 +30,7 @@ No parallelism needed — T2's Footprint (`README.md`) doesn't overlap T1's (fro
 
 ### Description
 
-Add stretch goal 3 from the PDF: a printable view of a document, reachable from the existing read-only view. Renders the document (metadata, line items, totals) in a print-optimized layout based on `design/htmls/print.html`, with `@media print` rules so printing (or "Save as PDF" from the browser) produces a clean, chrome-free page. No backend changes — reuses the existing `GET /api/v1/documents/:id` response.
+Add stretch goal 3 from the PDF: a printable view of a document, reachable from the existing read-only view. Renders the document (metadata, line items, totals) in a print-optimized layout based on `design/htmls/print.html`, with `@media print` rules so printing (or "Save as PDF" from the browser) produces a clean, chrome-free page. No backend changes — reuses two existing endpoints, `GET /api/v1/documents/:id` (metadata/lines/totals) and `POST /api/v1/pricing/preview` (live per-line breakdown, the same second call `DocumentView.tsx` already makes).
 
 **Implementation note (post-hoc):** the Print link was added to `DocumentView.tsx` — the shared
 component rendered by both `[id]/view/page.tsx` and `[id]/page.tsx`'s finalized branch — rather
@@ -78,7 +78,7 @@ plan; every reference below to modifying `[id]/view/page.tsx` should be read as 
 - Do NOT build configurable or concurrency-safe document numbering (ARCH-7 Out of Scope, Decision A5).
 - Do NOT modify `[id]/page.tsx` or `[id]/view/page.tsx` directly — the Print link belongs in the shared `DocumentView.tsx` component both routes render, not duplicated into each route file.
 - `PrintDocument` stays its own component — do NOT fold its rendering into `DocumentView.tsx` or reuse `DocumentView.tsx` for the print layout; they're different layouts that happen to share the same totals-rendering discipline.
-- Do NOT add backend changes — no new endpoint, no schema change; reuse `GET /api/v1/documents/:id` as-is.
+- Do NOT add backend changes — no new endpoint, no schema change; reuse `GET /api/v1/documents/:id` and `POST /api/v1/pricing/preview` as-is.
 - Do NOT gate the print route by document status.
 
 ### Files Expected
@@ -117,9 +117,9 @@ Replace the current 25-line Docker-only `README.md` with the full submission-rea
 ### Verification Checklist
 
 1. **Live URL present near the top, not buried** — README's opening section states `https://multiprice.farealahmed.com` within the first section. _(R1)_
-2. **`curl https://multiprice.farealahmed.com/api/health` returns `200 {"status":"ok","db":"up"}`** at time of writing, confirming the stated URL is verified live, not stale. _(R1, ARCH forward stress-test)_
+2. **`curl https://multiprice.farealahmed.com/api/health` returns `200 {"status":"ok","db":"up","version":"0.0.0"}`** at time of writing, confirming the stated URL is verified live, not stale. _(R1, ARCH forward stress-test)_
 3. **Setup steps reproduce a working app from a clean clone** — `git clone` → copy `.env.example` → `.env` → generate `JWT_SECRET` → `docker compose up --build` → open `http://localhost:3000` → sign up, in that literal order, matching the current root README's already-correct sequence. _(R2, ARCH forward stress-test)_
-4. **Rounding-policy section matches the pricing engine exactly** — states the order (subtotal → discount → round → tax-on-discounted → round → total) and the policy in one sentence (half-up, 2 decimals per line), cross-checked against `apps/backend/src/pricing/calculate-line.ts` and `rounding.ts`. _(R3)_
+4. **Rounding-policy section matches the pricing engine exactly** — states all four rounding points in order (subtotal → round → discount → round → after-discount → round → tax-on-discounted → round → total) and the policy in one sentence (half-up, 2 decimals per line), cross-checked against `apps/backend/src/pricing/calculate-line.ts` (four `roundHalfUp` call sites) and `rounding.ts`. _(R3)_
 5. **Worked-example numbers match `docs/contracts/phase-1.md` and `test/api/documents.test.ts:210` exactly** — Widget A / Widget B / Service fee per-line figures, and document totals `450.00 / 40.00 / 11.50 / 421.50`, copied not recomputed. _(R3, ARCH forward stress-test)_
 6. **Two-path grand-total reconciliation is stated** — sum of line totals *and* subtotal − discount + tax both equal `421.50`. _(R3)_
 7. **Integer-cents/thousandths/basis-points rationale is present**, citing the PDF's "avoid floating-point drift" and pointing at `apps/backend/src/pricing/` as the single module. _(R3)_

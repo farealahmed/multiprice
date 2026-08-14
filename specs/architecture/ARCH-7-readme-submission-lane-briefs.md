@@ -8,7 +8,7 @@
 
 ## Architecture Summary
 
-Issue #7 originally scoped a 5-lane parallel-agent effort (README, seed script, frontend quality pass, printable view, deployment, CI/CD). Deployment and CI/CD are already live and verified; a frontend quality pass happened ad hoc this session; the seed script and a unified e2e journey test were explicitly declined by the developer (existing per-phase Cypress specs already cover that ground). Two things remain: the PDF's third stretch goal — a printable view of a document — and `README.md` itself, still a 25-line Docker-only stub missing every one of the PDF's five required sections. This ARCH scopes both, in that order: **a small additive frontend feature** (one new route, one new component, one new stylesheet — no backend changes, no new dependency, reuses the existing `GET /documents/:id` response) **followed by a single-file README rewrite** that can then accurately describe the finished stretch-goal state. The README is reassembled from facts already verified against the live codebase this session — the pricing engine's worked example, the immutability test suite, the deployment runbook — rather than from the original lane brief's assumptions, at least one of which (a `Makefile`) doesn't exist in this repo.
+Issue #7 originally scoped a 5-lane parallel-agent effort (README, seed script, frontend quality pass, printable view, deployment, CI/CD). Deployment and CI/CD are already live and verified; a frontend quality pass happened ad hoc this session; the seed script and a unified e2e journey test were explicitly declined by the developer (existing per-phase Cypress specs already cover that ground). Two things remain: the PDF's third stretch goal — a printable view of a document — and `README.md` itself, still a 25-line Docker-only stub missing every one of the PDF's five required sections. This ARCH scopes both, in that order: **a small additive frontend feature** (one new route, one new component, two new stylesheets — no backend changes, no new dependency, reuses the two existing endpoints `GET /documents/:id` and `POST /pricing/preview`) **followed by a single-file README rewrite** that can then accurately describe the finished stretch-goal state. The README is reassembled from facts already verified against the live codebase this session — the pricing engine's worked example, the immutability test suite, the deployment runbook — rather than from the original lane brief's assumptions, at least one of which (a `Makefile`) doesn't exist in this repo.
 
 ## Inferred Requirements (if Mode B / no REQ)
 
@@ -44,7 +44,7 @@ original plan: the link reaches a finalized document from either route instead o
 doc originally said `[id]/view/page.tsx`; every reference below is corrected to say
 `DocumentView.tsx`, which is what actually changed.
 
-No backend involvement — `GET /documents/:id` (already exists, already returns metadata + lines + totals) is the only data source. No new persisted field.
+No backend involvement — no new route, schema, or contract. Two existing endpoints are the only data sources: `GET /documents/:id` for metadata/lines/totals, and `POST /pricing/preview` for the live per-line breakdown (subtotal, discount, tax, total per line — never persisted, always computed on request), the same second call `DocumentView.tsx` already makes for the same reason. No new persisted field.
 
 **2. README (R1–R8) — not a system, a single document.** Section order is fixed by the PDF (do not reorder or merge, per issue #7's own instruction) with setup and test-running folded in:
 
@@ -89,8 +89,8 @@ N/A — no new route, schema, or contract on the backend. The printable view is 
 
 | Module / Package | Responsibility | Allowed Dependencies |
 |----|----|----|
-| `apps/frontend/src/components/print/` | Print-layout rendering for one document | `@/lib/api/types/document`, `@/components/money/Money` — no new dependency |
-| `apps/frontend/src/app/(app)/documents/[id]/print/` | Route: load document by id, render `PrintDocument` | `@/components/print`, `@/lib/api/documents` |
+| `apps/frontend/src/components/print/` | Print-layout rendering for one document | `@/lib/api/types/document`, `@/lib/api/types/pricing`, `@/components/money/Money` — no new dependency |
+| `apps/frontend/src/app/(app)/documents/[id]/print/` | Route: load document by id and its live pricing preview, render `PrintDocument` | `@/components/print`, `@/lib/api/documents` (`get`), `@/lib/api/pricing` (`preview`), `@/lib/api/client` (`ApiError`), `@/components/shell/Topbar`, `@/components/lifecycle/lifecycle.module.css` (reuses the existing loading/error page styles) — no new dependency |
 | `README.md` | Sole owned file for the documentation half of this ARCH | Reads (never modifies) `docs/contracts/`, `specs/lanes/deployment.md`, `compose.yml`, `.env.example`, the test suite |
 
 ## Change Footprint
@@ -175,6 +175,7 @@ _Not code-regression hotspots in the usual sense — these are the source-of-tru
 | Reviewer cross-checks the worked-example numbers against the running app | Numbers are copied from `docs/contracts/phase-1.md`, independently cross-checked against the passing assertion in `test/api/documents.test.ts:210` in this task, not recomputed by hand — eliminates transcription drift |
 | A document has enough line items to approach a page boundary in print preview | `page-break-inside: avoid` on table rows in `print.css`, verified visually at A4 and Letter with a document long enough to actually hit a boundary |
 | A document has zero line items and the reviewer opens its print view | `PrintDocument` renders the same "no lines" state the editor/view already handle — an empty table body, not a crash; totals still render from `document.totals` (all zeros) |
+| A reviewer navigates from document A's print page to document B's before A finishes loading | **Found in code review, not anticipated here originally.** `lib/api/pricing.ts`'s `preview()` is a shared, debounced module singleton that resolves every in-flight caller with whichever line array was requested last — A's own late `get()` resolution calling `preview(A.lines)` after the user already moved to B would corrupt the shared debouncer and let B render A's totals. Fixed with a per-`load()` generation token in `page.tsx` that stops a stale request from ever calling `preview()`, checked *before* that call, not only after — covered by a new regression test in `page.test.tsx`. |
 
 ### Backward — regression risk per touched area (brownfield only)
 

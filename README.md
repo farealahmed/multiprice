@@ -33,7 +33,7 @@ cookie never becomes a cross-site problem.
 apps/backend    Fastify + MongoDB
   src/api/         routes + plugins (auth, immutability guard, rate limiting, error handling)
   src/services/    business logic — one function per document operation
-  src/pricing/     the calculation engine — imports nothing, called by every route that touches money
+  src/pricing/     the calculation engine — self-contained, no external dependencies, called by every route that touches money
   src/persistence/ MongoDB repositories, one per collection
   src/contracts/   zod schemas — the single source of truth for validation and wire shapes
   src/domain/      stored-record types
@@ -56,9 +56,10 @@ mutating the source). A forgotten guard becomes a startup failure, not a silent 
 
 ## Calculation & Rounding Policy
 
-Per line, in order: **subtotal → discount → round → tax on the discounted amount → round →
-line total.** Document totals are sums of the already-rounded line figures — no re-rounding at
-the document level.
+Per line, in order, with a round after every fractional step (four rounding points total):
+**subtotal → round → discount → round → after-discount amount → round → tax on the discounted
+amount → round → line total.** Document totals are sums of the already-rounded line figures —
+no re-rounding at the document level.
 
 **Policy, in one sentence:** half-up (away from zero), 2 decimal places, at every fractional
 step.
@@ -68,9 +69,10 @@ calls for avoiding floating-point drift — converting to exact integers at the 
 never touching a floating-point dollar amount again inside the engine does that directly,
 rather than trying to catch drift after the fact.
 
-The engine lives in `apps/backend/src/pricing/` — one module, imports nothing, and is called by
-every route that touches money (create, update, finalize, duplicate, and the live pricing
-preview the editor uses).
+The engine lives in `apps/backend/src/pricing/` — a self-contained module set with no external
+dependencies (its files import only each other, e.g. the line calculator imports the rounding
+helper) — and is called by every route that touches money (create, update, finalize, duplicate,
+and the live pricing preview the editor uses).
 
 **Worked example** (the PDF's own sample):
 
@@ -120,6 +122,7 @@ before schema validation, not after).
 - Duplicate existed only as a dead frontend stub calling a backend route that had never been implemented (a real `404` in practice) until this was caught and the actual service + route were built.
 - The finalize-validation stretch goal only checked quantity defensively at finalize time — the pricing engine itself had no check for a negative unit price at all, only the write-time schema did. Both halves are now checked symmetrically at finalize.
 - A unified end-to-end journey test (signup → sample document → finalize → report) was considered but not built; the Cypress specs below already cover the same ground per-phase instead.
+- The printable view's page had a real race: its live pricing-preview call goes through a shared, debounced client function that resolves every in-flight caller with whichever line array was requested last, regardless of which document asked. Navigating from one document's print page to another's before the first had finished loading could let the second page render the first's line-level totals. Caught in review; fixed with a per-load generation token that stops a stale request from calling the preview endpoint at all once navigation has moved on, with a regression test covering the exact sequence.
 
 ## What I'd Improve Before Production
 
@@ -133,6 +136,10 @@ before schema validation, not after).
 
 ## Setup
 
+**Prerequisites:** Docker Engine with the Compose v2 plugin (the `docker compose` command below,
+not the legacy `docker-compose`), and Node 22+ on the host — only needed for the one-off
+`JWT_SECRET` generation command, not for running the app itself.
+
 `docker compose up` requires a `.env` file at the repository root — it is not committed, and
 there is no working default for `JWT_SECRET` (an empty or guessable session secret would make
 signed cookies forgeable).
@@ -143,7 +150,7 @@ cd multiprice
 cp .env.example .env
 ```
 
-Generate a real value for `JWT_SECRET`:
+Generate a real value for `JWT_SECRET` (host Node 22+ required for this command only):
 
 ```sh
 node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"
