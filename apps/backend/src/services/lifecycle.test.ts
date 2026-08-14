@@ -170,6 +170,22 @@ describe('lifecycle service — finalizeDocument', () => {
     expect(calls.finalizeIfDraft).toHaveLength(0);
   });
 
+  it('rejects a persisted line with a negative unit price and never calls finalizeIfDraft', async () => {
+    const negativePriceLine = makeValidLine({ unitPrice: -100 });
+    const invalid = makeStoredDocument({ lines: [negativePriceLine] });
+    const { repository, calls } = createFakeRepository({ findByIdResult: invalid });
+    const id = invalid._id.toHexString();
+
+    await expect(
+      finalizeDocument({ ownerId: OWNER_ID, repository, id }),
+    ).rejects.toMatchObject({
+      lineIndex: 0,
+      cause: { code: 'UNIT_PRICE_NEGATIVE' },
+    });
+
+    expect(calls.finalizeIfDraft).toHaveLength(0);
+  });
+
   it('flips status via the atomic write and returns a finalized DocumentResponse', async () => {
     const draft = makeStoredDocument();
     const postImage: StoredDocument = {

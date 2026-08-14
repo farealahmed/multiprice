@@ -137,6 +137,29 @@ describe.skipIf(!mongoReachable)('POST /api/v1/documents/:id/finalize', () => {
     );
   });
 
+  it('rejects a persisted line with a negative unit price with its specific validation code', async () => {
+    const cookie = await createAuthenticatedUser(app, 'finalize-negative-price');
+    const id = await createDocument(cookie, { lines: [buildLinePayload()] });
+
+    // Test-only invalid state: normal API writes cannot persist a negative price.
+    const update = await harness.db.collection('documents').updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { 'lines.0.unitPrice': -100 } },
+    );
+    expect(update.modifiedCount).toBe(1);
+
+    const response = await finalize(cookie, id);
+
+    expect(response.statusCode).toBe(400);
+    const body = response.json() as {
+      error: { code: string; details: Array<{ code: string }> };
+    };
+    expect(body.error.code).toBe('VALIDATION_FAILED');
+    expect(body.error.details).toContainEqual(
+      expect.objectContaining({ code: 'UNIT_PRICE_NEGATIVE' }),
+    );
+  });
+
   it('rejects an empty document with DOCUMENT_HAS_NO_LINES', async () => {
     const cookie = await createAuthenticatedUser(app, 'finalize-empty');
     const id = await createDocument(cookie);

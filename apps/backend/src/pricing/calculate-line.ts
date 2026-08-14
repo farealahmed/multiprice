@@ -21,7 +21,7 @@ export interface LineResult {
   total: number;
 }
 
-export type PricingErrorCode = 'DISCOUNT_EXCEEDS_SUBTOTAL' | 'QUANTITY_TOO_LOW';
+export type PricingErrorCode = 'DISCOUNT_EXCEEDS_SUBTOTAL' | 'QUANTITY_TOO_LOW' | 'UNIT_PRICE_NEGATIVE';
 
 /** A domain error with no knowledge of HTTP transport or validation libraries. */
 export class PricingError extends Error {
@@ -61,6 +61,9 @@ export function calculateLine(input: LineInput): LineResult {
   assertSafeInteger(input.unitPrice, 'Unit price');
   if (input.quantity < 1_000) {
     throw new PricingError('QUANTITY_TOO_LOW', 'Quantity must be at least 1');
+  }
+  if (input.unitPrice < 0) {
+    throw new PricingError('UNIT_PRICE_NEGATIVE', 'Unit price must not be negative');
   }
 
   const subtotal = roundHalfUp(calculateSubtotal(input.quantity, input.unitPrice));
