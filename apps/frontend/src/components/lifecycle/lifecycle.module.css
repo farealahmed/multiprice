@@ -13,7 +13,9 @@
 .headerActions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
   flex: none;
 }
 
@@ -306,6 +308,10 @@
 @media (max-width: 800px) {
   .pageHead {
     flex-direction: column;
+  }
+
+  .headerActions {
+    justify-content: flex-start;
   }
 
   .metadata {

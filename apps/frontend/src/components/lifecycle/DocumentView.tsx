@@ -120,6 +120,9 @@ export function DocumentView({ document }: DocumentViewProps) {
             >
               {duplicating ? 'Duplicating…' : 'Duplicate as draft'}
             </button>
+            <Link className={styles.back} href={`/documents/${document.id}/print`}>
+              Print
+            </Link>
             <Link className={styles.back} href="/documents">
               ← Back to documents
             </Link>
