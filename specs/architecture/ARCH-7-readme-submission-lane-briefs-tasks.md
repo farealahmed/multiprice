@@ -94,7 +94,7 @@ Add stretch goal 3 from the PDF: a printable view of a document, reachable from 
 
 ## Task T2: Rewrite README.md for submission
 
-> **Status:** not started
+> **Status:** done
 > **Verification:** checklist
 > **Effort:** s
 > **Priority:** high
