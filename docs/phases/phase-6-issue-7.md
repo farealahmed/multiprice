@@ -120,8 +120,6 @@ Deployment is **`6-E`**, a real lane in wave 8 rather than an assumption. The PD
 
 ### Inputs (decided)
 
-Modeled on a sibling project's working deployment — `../multip` on disk, a separate repo (`foyzulkarim/multip` on GitHub, unrelated to this one) — read for its proven shape, not copied wholesale, because that project exposes two public subdomains and this one deliberately keeps a single origin (see Build §2). `multip` itself no longer exists — its droplet was corrupted and deleted before this lane started, so this is a **dedicated** droplet for `multiprice`, provisioned fresh, not a shared one.
-
 1. **Provider** — a fresh DigitalOcean droplet (Basic, 1 vCPU / 2 GB / 50 GB, DigitalOcean's Docker marketplace image — Docker preinstalled), dedicated to `multiprice` alone. Hardened by hand: non-root `deploy` user with sudo and docker-group membership, key-only SSH (no root login, no password auth), a 2 GB swap file, DigitalOcean Cloud Firewall open on 22/80/443 to all sources (SSH access control is the deploy key, not an IP allowlist — GitHub Actions runners need to reach port 22 too).
 2. **Database** — self-hosted Mongo, one container, named volume, **no published host port**. No replica set: this app has no multi-document transactions (finalize is one atomic write on an embedded aggregate), so a plain `mongod` is enough.
 3. **Hostname** — `multiprice.farealahmed.com`. One Cloudflare `A` record, DNS-only ("grey cloud", not proxied), pointed at the droplet's IP, so Caddy's own Let's Encrypt HTTP challenge works. **One hostname only** — this repo's frontend already proxies `/api/*` to the backend via `BACKEND_ORIGIN` (see `compose.yml`), so only the frontend needs a public vhost; the backend stays reachable over the compose network alone.
@@ -146,7 +144,7 @@ Modeled on a sibling project's working deployment — `../multip` on disk, a sep
 
 **Agent** infra-engineer · **`6-F1`** depends on `J4` (wave 8) · **`6-F2`** depends on `J5` and reads `6-E`'s `specs/lanes/deployment.md` (wave 9) · **Parallel with** `6-E`, `6-A1` (wave 8); `6-A2`, `6-B`, `6-C` (wave 9)
 
-**Mission** Turn `6-E`'s "one repeatable command" into something that runs itself: every push and PR proves the suites still pass, and a merge to `main` redeploys `multiprice.farealahmed.com` without a human re-typing `6-E`'s release command. This is a scope reversal — the plan through Phase 0 explicitly said no CI pipeline; the human has since asked for one, modeled on `multip`'s already-working workflows (`../multip/.github/workflows/{backend,frontend}-ci.yml`) but adapted to this repo's single public hostname and its actual (smaller) npm script set — `multip`'s `lint`/`format`/`depcruise`/`check:boundaries` steps do not exist here and are **not** added as a side effect of this lane; only what `package.json` already has.
+**Mission** Turn `6-E`'s "one repeatable command" into something that runs itself: every push and PR proves the suites still pass, and a merge to `main` redeploys `multiprice.farealahmed.com` without a human re-typing `6-E`'s release command. This is a scope reversal — the plan through Phase 0 explicitly said no CI pipeline.
 
 **Owns** `.github/workflows/**`, `specs/lanes/6-f.md`
 
@@ -168,7 +166,7 @@ Modeled on a sibling project's working deployment — `../multip` on disk, a sep
 
 **Done when** opening any PR shows both CI jobs running and blocking merge on failure, and a push to `main` (once branch protection and secrets are configured by the human) redeploys `multiprice.farealahmed.com` — verified once by triggering it and confirming the URL served a new build.
 
-**Guardrails** No application source changes. One CI provider (GitHub Actions). Do not replace `J6`'s manual redeploy-and-verify step; automate the mechanism, not the final human check. Do not port `multip`'s two-public-subdomain Caddy pattern — one vhost, frontend only.
+**Guardrails** No application source changes. One CI provider (GitHub Actions). Do not replace `J6`'s manual redeploy-and-verify step; automate the mechanism, not the final human check.
 
 ---
 
