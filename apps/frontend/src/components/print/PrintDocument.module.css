@@ -227,8 +227,11 @@
   }
 
   .page {
-    max-width: none;
+    box-sizing: border-box;
+    margin: 0 auto;
+    max-width: 100%;
     padding: 0;
+    width: 186mm;
   }
 
   .actions {
@@ -237,14 +240,86 @@
 
   .sheet {
     box-shadow: none;
+    box-sizing: border-box;
     color: #000;
-    max-width: none;
+    margin: 0;
+    max-width: 100%;
+    min-width: 0;
     padding: 0;
+    width: 100%;
+  }
+
+  .header,
+  .details,
+  .summary {
+    gap: 8mm;
+  }
+
+  .header > *,
+  .details > *,
+  .summary > * {
+    min-width: 0;
+  }
+
+  .totals {
+    min-width: 50mm;
   }
 
   .table {
     color: #000;
+    font-size: 9pt;
     page-break-inside: auto;
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  .table th,
+  .table td {
+    box-sizing: border-box;
+    padding: 1.5mm 1mm;
+  }
+
+  .table th:nth-child(1) {
+    width: 4%;
+  }
+
+  .table th:nth-child(2) {
+    width: 32%;
+  }
+
+  .table th:nth-child(3) {
+    width: 7%;
+  }
+
+  .table th:nth-child(4) {
+    width: 14%;
+  }
+
+  .table th:nth-child(5) {
+    width: 15%;
+  }
+
+  .table th:nth-child(6) {
+    width: 8%;
+  }
+
+  .table th:nth-child(7) {
+    width: 20%;
+  }
+
+  .table th:not(:nth-child(2)),
+  .table td:not(:nth-child(2)) {
+    white-space: nowrap;
+  }
+
+  .table th:nth-child(2),
+  .table td:nth-child(2) {
+    overflow-wrap: anywhere;
+  }
+
+  .closing {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .table tr {
