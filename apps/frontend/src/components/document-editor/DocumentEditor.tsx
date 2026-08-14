@@ -307,6 +307,10 @@ export function DocumentEditor({ documentId, initialDocument, onFinalized }: Doc
     );
   }
 
+  const hasBlockingErrors =
+    errors !== null &&
+    (Object.keys(errors.metadata).length > 0 || errors.rows.size > 0 || errors.documentLevel.length > 0);
+
   const note = previewPending
     ? totalsSource.kind === 'persisted'
       ? 'Saved totals shown while line figures refresh.'
@@ -424,7 +428,13 @@ export function DocumentEditor({ documentId, initialDocument, onFinalized }: Doc
               >
                 Finalize document
               </button>
-              <button className={styles.button} disabled={saving} type="button" onClick={save}>
+              <button
+                className={styles.button}
+                disabled={saving || hasBlockingErrors}
+                title={hasBlockingErrors ? 'Fix the highlighted errors before saving.' : undefined}
+                type="button"
+                onClick={save}
+              >
                 {saving ? 'Saving…' : 'Save draft'}
               </button>
             </div>
