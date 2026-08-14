@@ -10,6 +10,14 @@
   margin-bottom: 32px;
 }
 
+.headerActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+
 .back,
 .button {
   display: inline-flex;
@@ -292,6 +300,10 @@
 @media (max-width: 800px) {
   .pageHead {
     flex-direction: column;
+  }
+
+  .headerActions {
+    justify-content: flex-start;
   }
 
   .metadata {

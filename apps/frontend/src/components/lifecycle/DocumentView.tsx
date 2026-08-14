@@ -91,9 +91,14 @@ export function DocumentView({ document }: DocumentViewProps) {
               computed server-side and are now locked.
             </p>
           </div>
-          <Link className={styles.back} href="/documents">
-            ← Back to documents
-          </Link>
+          <div className={styles.headerActions}>
+            <Link className={styles.back} href={`/documents/${document.id}/print`}>
+              Print
+            </Link>
+            <Link className={styles.back} href="/documents">
+              ← Back to documents
+            </Link>
+          </div>
         </header>
 
         <StatusBanner>

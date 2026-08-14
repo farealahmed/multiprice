@@ -2,7 +2,6 @@
 /** @jsxImportSource react */
 'use client';
 
-import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -78,12 +77,5 @@ export default function DocumentViewPage() {
     );
   }
 
-  return (
-    <>
-      <div className="no-print">
-        <Link href={`/documents/${state.document.id}/print`}>Print</Link>
-      </div>
-      <DocumentView document={state.document} />
-    </>
-  );
+  return <DocumentView document={state.document} />;
 }

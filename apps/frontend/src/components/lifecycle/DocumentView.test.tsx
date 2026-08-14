@@ -108,6 +108,15 @@ describe('DocumentView', () => {
     expect(screen.queryAllByRole('textbox')).toHaveLength(0);
   });
 
+  it('links the canonical read-only view to its printable view', () => {
+    render(<DocumentView document={finalizedDocument} />);
+
+    expect(screen.getByRole('link', { name: 'Print' })).toHaveAttribute(
+      'href',
+      '/documents/document-1/print',
+    );
+  });
+
   it('requests per-line computed figures from the pricing preview', async () => {
     render(<DocumentView document={finalizedDocument} />);
 
