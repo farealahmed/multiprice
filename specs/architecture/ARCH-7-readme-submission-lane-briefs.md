@@ -31,11 +31,18 @@ Two independent pieces of work, sequenced (printable view first, so R8's stretch
 **1. Printable view (R9) — a small additive frontend feature, not a system:**
 
 ```
-apps/frontend/src/app/(app)/documents/[id]/view/page.tsx  ──[adds "Print" link]──►
-apps/frontend/src/app/(app)/documents/[id]/print/page.tsx  ──[loads doc by id, same pattern as view/page.tsx]──►
+apps/frontend/src/components/lifecycle/DocumentView.tsx    ──[adds "Print" link alongside the existing Duplicate action]──►
+apps/frontend/src/app/(app)/documents/[id]/print/page.tsx  ──[loads doc by id, same load pattern as [id]/view/page.tsx]──►
 apps/frontend/src/components/print/PrintDocument.tsx       ──[renders print layout from design/htmls/print.html]
 apps/frontend/src/styles/print.css                          ──[@media print rules: hide chrome, avoid row splits]
 ```
+
+**Correction (post-implementation):** the Print link landed in `DocumentView.tsx` — the shared
+component rendered by both `[id]/view/page.tsx` and `[id]/page.tsx`'s finalized branch — not in
+`[id]/view/page.tsx` directly as originally planned above. That's a better outcome than the
+original plan: the link reaches a finalized document from either route instead of only one. This
+doc originally said `[id]/view/page.tsx`; every reference below is corrected to say
+`DocumentView.tsx`, which is what actually changed.
 
 No backend involvement — `GET /documents/:id` (already exists, already returns metadata + lines + totals) is the only data source. No new persisted field.
 
@@ -100,7 +107,7 @@ N/A — no new route, schema, or contract on the backend. The printable view is 
 
 | Path | What changes here |
 |----|----|
-| `apps/frontend/src/app/(app)/documents/[id]/view/page.tsx` | Add a "Print" link to the new `/documents/:id/print` route |
+| `apps/frontend/src/components/lifecycle/DocumentView.tsx` | Add a "Print" link to the new `/documents/:id/print` route, alongside the existing Duplicate action, in the shared finalized-document header — reaches a finalized document from both `[id]/view/page.tsx` and `[id]/page.tsx`'s finalized branch, since both render this component |
 | `README.md` | Full rewrite: 25-line Docker-only stub → the 8-section structure above, covering every PDF-required deliverable topic, including the now-complete stretch-goal status |
 
 ### Deleted / replaced
@@ -122,13 +129,14 @@ _Not code-regression hotspots in the usual sense — these are the source-of-tru
 | `apps/backend/package.json`, `apps/frontend/package.json`, `e2e/cypress.config.js` | Source of the real `npm test` / Cypress commands for the "Running the tests" section |
 | `apps/backend/src/api/plugins/rate-limit.ts` | Source of the documented IP-bucketing limitation, a candidate "what to improve" item |
 | `apps/frontend/src/lib/api/documents.ts` (`get()`) | Print route reuses this existing client function — must keep returning the full `DocumentResponse` shape |
-| `apps/frontend/src/components/lifecycle/DocumentView.tsx` | Not modified or reused directly — `PrintDocument` is a separate component with its own print-specific layout, but both must stay consistent in how they render totals (verbatim, no client arithmetic) |
+| `apps/frontend/src/app/(app)/documents/[id]/view/page.tsx` | Not itself modified, but renders `DocumentView` (now modified) unconditionally — its loading/error states must keep working with only the header gaining a link |
+| `apps/frontend/src/app/(app)/documents/[id]/page.tsx` | Also renders `DocumentView` for a finalized document (the other of the two paths the new Print link now reaches) — not itself modified |
 
 ## Areas of Impact
 
 | Area | Impact | Risk (L/M/H) | Why |
 |----|----|----|----|
-| Frontend routing | One new route added under an existing dynamic segment | L | Purely additive — no existing route's behavior changes, only `[id]/view/page.tsx` gains a link |
+| Frontend routing | One new route added under an existing dynamic segment | L | Purely additive — no existing route's behavior changes, only `DocumentView.tsx` (shared by two routes) gains a link |
 | Print/PDF output | New user-facing capability (stretch goal 3) | L | No backend dependency, no new package; worst case is a visual/layout issue confined to the new route |
 | Submission / grading | README becomes a complete, accurate deliverable instead of a stub; stretch-goal status is now fully positive | L | Documentation-only for the README half; no runtime behavior changes there |
 | Reviewer onboarding | A reviewer can go from `git clone` to reproducing `421.50` using only the README, and can open a finalized document's print view | L | Directly verified this session against the actual (not assumed) repo state |
@@ -174,7 +182,8 @@ _Not code-regression hotspots in the usual sense — these are the source-of-tru
 |----|----|----|
 | `test/api/immutability.test.ts` (cited by name) | If this test file is later renamed/restructured, the README's citation goes stale | Low likelihood within this task's timeframe; not a code change this task makes, so no immediate mitigation needed beyond noting it |
 | `specs/lanes/deployment.md` (URL source) | If the droplet or hostname ever changes, the README's URL goes stale | Out of this task's control — deployment lane owns that file; README just reads it once at write time |
-| `apps/frontend/src/app/(app)/documents/[id]/view/page.tsx` | Adding the Print link could disturb its existing loading/error rendering if not scoped carefully | No component test exists for this route today (it's exercised indirectly via `e2e/lifecycle.cy.ts` and `e2e/documents.cy.ts`); mitigation is manual verification that load/error/retry states render identically with only the link added, plus a Cypress smoke pass |
+| `apps/frontend/src/components/lifecycle/DocumentView.tsx` | Adding the Print link to the shared header could disturb the existing Duplicate action or the read-only rendering it sits alongside | `DocumentView.test.tsx` already exists and covers this component directly — a new test asserts the Print link's `href`, and the existing tests (metadata rendering, no editable inputs, duplicate flow, document totals) all still pass unchanged, proving the addition didn't disturb what was already there |
+| `apps/frontend/src/app/(app)/documents/[id]/view/page.tsx`, `[id]/page.tsx` | Neither route file is itself modified, but both render `DocumentView` — a regression there would surface on both routes | No dedicated component test exists for either route file (exercised indirectly via `e2e/lifecycle.cy.ts` and `e2e/documents.cy.ts`); mitigation is manual verification that both routes still load/error/retry correctly, plus a Cypress smoke pass |
 
 ## Open Questions
 
