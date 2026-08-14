@@ -87,6 +87,20 @@ describe('calculateLine', () => {
     }
   });
 
+  it('rejects a negative unit price while accepting zero', () => {
+    const withUnitPrice = (unitPrice: number) => ({
+      quantity: toThousandths(1),
+      unitPrice,
+      discount: { type: 'none' } as const,
+      taxPercent: null,
+    });
+
+    expect(() => calculateLine(withUnitPrice(toCents(-0.01)))).toThrow(
+      expect.objectContaining({ code: 'UNIT_PRICE_NEGATIVE' } satisfies Partial<PricingError>),
+    );
+    expect(calculateLine(withUnitPrice(toCents(0)))).toBeDefined();
+  });
+
   it('rounds the subtotal before computing a discount and keeps cents exact', () => {
     expect(
       calculateLine({

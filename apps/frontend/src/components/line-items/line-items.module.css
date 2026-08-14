@@ -151,7 +151,7 @@
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: 9px 2px;
+  padding: 14px 2px;
   border-bottom: 1px solid var(--sand);
   transition: opacity 0.15s ease;
 }

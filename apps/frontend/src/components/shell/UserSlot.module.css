@@ -1,0 +1,30 @@
+.wrap {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.email {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+.button {
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 6px 12px;
+  color: var(--ink);
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--bg);
+}
+
+.button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}

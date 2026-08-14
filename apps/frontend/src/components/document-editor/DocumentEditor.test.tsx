@@ -235,6 +235,33 @@ describe('DocumentEditor', () => {
     vi.useRealTimers();
   });
 
+  it('disables Save draft while the live preview reports a line error, and re-enables it once fixed', async () => {
+    render(<DocumentEditor documentId="document-1" />);
+    await screen.findByDisplayValue('Website redesign');
+
+    const saveButton = screen.getByRole('button', { name: 'Save draft' });
+    expect(saveButton).not.toBeDisabled();
+
+    previewMock.mockRejectedValueOnce(
+      new ApiError('VALIDATION_FAILED', 'Validation failed', [
+        { path: 'lines.0.unitPrice', code: 'UNIT_PRICE_NEGATIVE', message: 'Unit price must not be negative' },
+      ]),
+    );
+    fireEvent.change(screen.getByLabelText('Row 1 unit price'), { target: { value: '-5' } });
+
+    await waitFor(() => expect(screen.getByText('Unit price must not be negative')).toBeTruthy());
+    expect(saveButton).toBeDisabled();
+
+    fireEvent.click(saveButton);
+    expect(updateMock).not.toHaveBeenCalled();
+
+    previewMock.mockResolvedValueOnce(liveResult);
+    fireEvent.change(screen.getByLabelText('Row 1 unit price'), { target: { value: '100' } });
+
+    await waitFor(() => expect(screen.queryByText('Unit price must not be negative')).toBeNull());
+    await waitFor(() => expect(saveButton).not.toBeDisabled());
+  });
+
   it('does not call onFinalized when finalize fails', async () => {
     const onFinalized = vi.fn();
     finalizeMock.mockRejectedValue(new ApiError('DOCUMENT_HAS_NO_LINES', 'Add at least one line.'));

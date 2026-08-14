@@ -3,6 +3,7 @@ import type { FastifyInstance, FastifyPluginAsync } from 'fastify';
 import { createDocumentsRepository } from '../../persistence/documents.repository.ts';
 import {
   finalizeDocument,
+  duplicateDocument,
   DocumentHasNoLinesError,
   DocumentAlreadyFinalizedError,
 } from '../../services/lifecycle.ts';
@@ -77,6 +78,29 @@ const lifecycleRoutes: FastifyPluginAsync = async (app: FastifyInstance) => {
         }
         if (error instanceof DocumentAlreadyFinalizedError) {
           return reply.code(409).send(documentFinalizedEnvelope());
+        }
+        throw error;
+      }
+    },
+  );
+
+  app.post(
+    '/api/v1/documents/:id/duplicate',
+    { preHandler: app.authenticate },
+    async (request, reply) => {
+      const repository = createDocumentsRepository(app.db);
+      const { id } = request.params as { id: string };
+
+      try {
+        const doc = await duplicateDocument({
+          ownerId: request.userId!,
+          repository,
+          id,
+        });
+        return reply.code(201).send(doc);
+      } catch (error) {
+        if (error instanceof DocumentNotFoundError) {
+          return reply.code(404).send(documentNotFoundEnvelope());
         }
         throw error;
       }

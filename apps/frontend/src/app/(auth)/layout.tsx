@@ -16,7 +16,7 @@ export default function AuthLayout({ children }: Readonly<{ children: ReactNode 
               <span aria-hidden="true" className={styles.brandMark}>
                 {Array.from({ length: 9 }, (_, index) => <i key={index} />)}
               </span>
-              <span>Tallymark</span>
+              <span>MultiPrice</span>
             </div>
             <div className={styles.introduction}>
               <p className={styles.tag}>Multi-Rate Pricing Calculator</p>

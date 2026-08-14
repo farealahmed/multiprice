@@ -12,11 +12,19 @@
 
 .headerActions {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
   justify-content: flex-end;
+  gap: 12px;
+  flex: none;
 }
 
+.actionError {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 0 0 20px;
+  line-height: 1.5;
+}
 
 .back,
 .button {

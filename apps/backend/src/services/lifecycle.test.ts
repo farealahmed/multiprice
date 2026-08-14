@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ObjectId } from 'mongodb';
 import { randomUUID } from 'crypto';
 
-import { finalizeDocument } from './lifecycle.ts';
+import { finalizeDocument, duplicateDocument } from './lifecycle.ts';
 import {
   DocumentHasNoLinesError,
   DocumentAlreadyFinalizedError,
@@ -56,21 +56,25 @@ function createFakeRepository({
   findByIdSequence,
   finalizeIfDraftResult,
   finalizeIfDraftSequence,
+  insertResult,
 }: {
   findByIdResult?: StoredDocument | null;
   findByIdSequence?: Array<StoredDocument | null>;
   finalizeIfDraftResult?: StoredDocument | null;
   finalizeIfDraftSequence?: Array<StoredDocument | null>;
+  insertResult?: { insertedId: ObjectId };
 } = {}): {
   repository: DocumentsRepository;
   calls: {
     findById: Array<{ ownerId: string; id: string }>;
     finalizeIfDraft: FinalizeIfDraftCall[];
+    insert: Array<[string, Omit<StoredDocument, '_id' | 'ownerId'>]>;
   };
 } {
   const calls = {
     findById: [] as Array<{ ownerId: string; id: string }>,
     finalizeIfDraft: [] as FinalizeIfDraftCall[],
+    insert: [] as Array<[string, Omit<StoredDocument, '_id' | 'ownerId'>]>,
   };
 
   const findByIdQueue = findByIdSequence ? [...findByIdSequence] : undefined;
@@ -87,7 +91,10 @@ function createFakeRepository({
       if (findByIdResult.ownerId !== ownerId) return null;
       return findByIdResult;
     },
-    insert: vi.fn(),
+    insert: async (ownerId, document) => {
+      calls.insert.push([ownerId, document]);
+      return insertResult ?? { insertedId: new ObjectId() };
+    },
     update: vi.fn(),
     remove: vi.fn(),
     finalizeIfDraft: async (ownerId, id, expectedUpdatedAt, totals) => {
@@ -160,6 +167,22 @@ describe('lifecycle service — finalizeDocument', () => {
     });
 
     expect(calls.findById).toHaveLength(2);
+    expect(calls.finalizeIfDraft).toHaveLength(0);
+  });
+
+  it('rejects a persisted line with a negative unit price and never calls finalizeIfDraft', async () => {
+    const negativePriceLine = makeValidLine({ unitPrice: -100 });
+    const invalid = makeStoredDocument({ lines: [negativePriceLine] });
+    const { repository, calls } = createFakeRepository({ findByIdResult: invalid });
+    const id = invalid._id.toHexString();
+
+    await expect(
+      finalizeDocument({ ownerId: OWNER_ID, repository, id }),
+    ).rejects.toMatchObject({
+      lineIndex: 0,
+      cause: { code: 'UNIT_PRICE_NEGATIVE' },
+    });
+
     expect(calls.finalizeIfDraft).toHaveLength(0);
   });
 
@@ -291,5 +314,75 @@ describe('lifecycle service — finalizeDocument', () => {
     });
 
     expect(result).toEqual(toDocumentResponse(postImage));
+  });
+});
+
+describe('lifecycle service — duplicateDocument', () => {
+  it('throws DocumentNotFoundError for a missing document and never calls insert', async () => {
+    const { repository, calls } = createFakeRepository({ findByIdResult: null });
+    const id = new ObjectId().toHexString();
+
+    await expect(
+      duplicateDocument({ ownerId: OWNER_ID, repository, id }),
+    ).rejects.toBeInstanceOf(DocumentNotFoundError);
+
+    expect(calls.insert).toHaveLength(0);
+  });
+
+  it('throws DocumentNotFoundError for a foreign-owned document', async () => {
+    const foreign = makeStoredDocument({ ownerId: OTHER_OWNER_ID });
+    const { repository, calls } = createFakeRepository({ findByIdResult: foreign });
+    const id = foreign._id.toHexString();
+
+    await expect(
+      duplicateDocument({ ownerId: OWNER_ID, repository, id }),
+    ).rejects.toBeInstanceOf(DocumentNotFoundError);
+
+    expect(calls.insert).toHaveLength(0);
+  });
+
+  it('copies a finalized source into a new draft with fresh line ids and recomputed totals', async () => {
+    const sourceLine = makeValidLine({
+      id: 'source-line-1',
+      unitPrice: 500,
+      discount: { type: 'percent', value: 1000 },
+      taxPercent: 500,
+    });
+    const source = makeStoredDocument({
+      status: 'finalized',
+      lines: [sourceLine],
+      // Deliberately stale, to prove duplicate recomputes rather than copies.
+      totals: { subtotal: 999_99, totalDiscount: 0, totalTax: 0, grandTotal: 999_99 },
+    });
+    const insertedId = new ObjectId();
+    const { repository, calls } = createFakeRepository({
+      findByIdResult: source,
+      insertResult: { insertedId },
+    });
+
+    const result = await duplicateDocument({
+      ownerId: OWNER_ID,
+      repository,
+      id: source._id.toHexString(),
+    });
+
+    expect(calls.insert).toHaveLength(1);
+    const [insertedOwnerId, insertedDoc] = calls.insert[0]!;
+    expect(insertedOwnerId).toBe(OWNER_ID);
+    expect(insertedDoc.status).toBe('draft');
+    expect(insertedDoc.title).toBe(source.title);
+    expect(insertedDoc.lines).toHaveLength(1);
+    expect(insertedDoc.lines[0]!.id).not.toBe(sourceLine.id);
+    // Cents, recomputed from the copied line (not copied from source.totals,
+    // which was deliberately stale above).
+    expect(insertedDoc.totals).toEqual({
+      subtotal: 500,
+      totalDiscount: 50,
+      totalTax: 23,
+      grandTotal: 473,
+    });
+
+    expect(result.id).toBe(insertedId.toHexString());
+    expect(result.status).toBe('draft');
   });
 });
