@@ -231,7 +231,7 @@
     margin: 0 auto;
     max-width: 100%;
     padding: 0;
-    width: 186mm;
+    width: 142mm;
   }
 
   .actions {
@@ -259,6 +259,24 @@
   .details > *,
   .summary > * {
     min-width: 0;
+  }
+
+  .header {
+    gap: 5mm;
+  }
+
+  .header > :first-child {
+    flex: 1 1 0;
+  }
+
+  .documentIdentity {
+    flex: 0 1 60mm;
+  }
+
+  .documentIdentity h1 {
+    font-size: 16pt;
+    line-height: 1.1;
+    overflow-wrap: anywhere;
   }
 
   .totals {
