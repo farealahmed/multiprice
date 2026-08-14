@@ -1,0 +1,258 @@
+@import '../../styles/print.css';
+.root {
+  background: var(--bg);
+}
+
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+
+.actions button {
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--white);
+  cursor: pointer;
+  padding: 10px 16px;
+}
+
+.sheet {
+  background: var(--white);
+  box-shadow: 0 10px 32px rgb(29 33 42 / 15%);
+  color: var(--ink);
+  margin: 0 auto;
+  max-width: 210mm;
+  padding: 52px 56px 30px;
+}
+
+.header,
+.details,
+.summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 32px;
+}
+
+.header {
+  align-items: flex-start;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 36px;
+}
+
+.brand {
+  font-family: var(--font-marcellus), serif;
+  font-size: 28px;
+}
+
+.eyebrow,
+.details h2 {
+  color: var(--ink-soft);
+  font-family: var(--font-roboto), sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  margin: 8px 0 0;
+  text-transform: uppercase;
+}
+
+.documentIdentity {
+  text-align: right;
+}
+
+.documentIdentity h1 {
+  font-size: 34px;
+  margin: 6px 0 14px;
+}
+
+.identityDetails,
+.totals {
+  margin: 0;
+}
+
+.identityDetails div,
+.totals div {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.identityDetails dt,
+.identityDetails dd,
+.totals dt,
+.totals dd {
+  margin: 0;
+}
+
+.identityDetails dt {
+  color: var(--ink-soft);
+}
+
+.identityDetails dd {
+  text-transform: capitalize;
+}
+
+.details {
+  margin: 36px 0;
+}
+
+.details > div:last-child {
+  text-align: right;
+}
+
+.details h2 {
+  margin: 0 0 8px;
+}
+
+.details p {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.table {
+  border-collapse: collapse;
+  font-family: var(--font-roboto), sans-serif;
+  font-size: 13px;
+  margin-bottom: 36px;
+  width: 100%;
+}
+
+.table th,
+.table td {
+  border-bottom: 1px solid var(--line);
+  padding: 11px 8px;
+  text-align: left;
+}
+
+.table th {
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.table th:not(:nth-child(2)),
+.table td:not(:nth-child(2)) {
+  text-align: right;
+}
+
+.summary {
+  align-items: flex-start;
+}
+
+.note {
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0;
+  max-width: 46ch;
+}
+
+.totals {
+  min-width: 260px;
+}
+
+.totals div {
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
+}
+
+.grandTotal {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.footer {
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+  display: flex;
+  font-family: var(--font-roboto), sans-serif;
+  font-size: 10px;
+  justify-content: space-between;
+  letter-spacing: 0.1em;
+  margin-top: 44px;
+  padding-top: 16px;
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding: 16px 0 32px;
+  }
+
+  .sheet {
+    box-shadow: none;
+    padding: 28px 18px;
+  }
+
+  .header,
+  .details,
+  .summary {
+    flex-direction: column;
+  }
+
+  .documentIdentity,
+  .details > div:last-child {
+    text-align: left;
+  }
+
+  .table {
+    font-size: 11px;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px 4px;
+  }
+}
+
+@media print {
+  .root {
+    background: #fff;
+    color: #000;
+  }
+
+  .root :global(.topbar),
+  .root :global(.no-print) {
+    display: none !important;
+  }
+
+  .page {
+    max-width: none;
+    padding: 0;
+  }
+
+  .actions {
+    display: none;
+  }
+
+  .sheet {
+    box-shadow: none;
+    color: #000;
+    max-width: none;
+    padding: 0;
+  }
+
+  .table {
+    color: #000;
+    page-break-inside: auto;
+  }
+
+  .table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .table thead {
+    display: table-header-group;
+  }
+}
